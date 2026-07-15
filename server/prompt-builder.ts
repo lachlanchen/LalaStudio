@@ -1,0 +1,67 @@
+import type { AssetDefinition, VideoSettings } from "./types.js";
+
+function storyBody(markdown: string): string {
+  const kept: string[] = [];
+  let skip = false;
+  for (const line of markdown.replace(/^#\s+.+$/m, "").split(/\r?\n/)) {
+    if (/^##\s+(?:Prompt Notes|提示词说明|生成说明|对应词卡|Word Card)(?:\s|$)/i.test(line.trim())) {
+      skip = true;
+      continue;
+    }
+    if (skip && /^##\s+/.test(line.trim())) skip = false;
+    if (!skip) kept.push(line);
+  }
+  return kept.join("\n").trim();
+}
+
+export function buildVideoPrompt(input: {
+  story: string;
+  assets: AssetDefinition[];
+  settings: VideoSettings;
+}): string {
+  const selected = input.settings.selectedAssetIds
+    .map((id) => input.assets.find((asset) => asset.id === id))
+    .filter((asset): asset is AssetDefinition => Boolean(asset));
+
+  const references = selected.map((asset, index) => `- 图${index + 1}：${asset.label}。${asset.role}。`);
+  const labels = new Map(selected.map((asset, index) => [asset.id, `图${index + 1}`]));
+  const identityLines = [
+    labels.has("raraxia") ? `啦啦侠严格参考${labels.get("raraxia")}，保持同一张脸、体型和服装。` : "",
+    labels.has("ayachan") ? `阿芽酱严格参考${labels.get("ayachan")}，保持同一张脸、体型和服装。` : "",
+    labels.has("sasakun") ? `飒飒君严格参考${labels.get("sasakun")}，保持同一张脸、体型和服装。` : "",
+    labels.has("zhuangzi") ? `庄子机器人严格参考${labels.get("zhuangzi")}，胸前保留 LazyingArt 标志。` : ""
+  ].filter(Boolean);
+
+  const wordCard = labels.has("word-card")
+    ? `\n场景里的${labels.get("word-card")}是实体学习卡风格参考。本集卡片显示：English: ${input.settings.wordCard.english}；Japanese: ${input.settings.wordCard.japanese}；Furigana: ${input.settings.wordCard.furigana}；中文：${input.settings.wordCard.chinese}。卡片只是场景中的真实道具，不是字幕。`
+    : "";
+
+  return `# 小云雀生成提示词
+
+请生成 ${input.settings.duration} 秒、${input.settings.ratio}、中文对白的温暖可爱短片。创作模式为${input.settings.mode === "short" ? "沉浸式短片" : "创作 Agent"}，目标模型为 ${input.settings.model}。
+
+## 参考图
+
+${references.join("\n")}
+
+${identityLines.join("\n")}
+${wordCard}
+
+## 故事
+
+${storyBody(input.story)}
+
+人物说话要像朋友正常聊天，动作清楚，事件有明确因果。不要字幕，不要生成说明文字或下三分之一文字。不要把文件名或本地路径画进视频。
+`;
+}
+
+export function validateVideoPrompt(prompt: string): string[] {
+  const issues: string[] = [];
+  if (/\/(?:home|Users|mnt|tmp)\//.test(prompt)) issues.push("Prompt contains a local filesystem path");
+  if (!/不要字幕/.test(prompt)) issues.push("Prompt does not explicitly disable generated subtitles");
+  if (!/啦啦侠/.test(prompt) || !/阿芽酱/.test(prompt) || !/飒飒君/.test(prompt)) {
+    issues.push("Prompt does not anchor all three main characters");
+  }
+  if (prompt.length > 6500) issues.push("Prompt is likely overpacked");
+  return issues;
+}

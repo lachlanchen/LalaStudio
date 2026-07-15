@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use Lala Studio, please cite this repository."
+type: software
+title: "Lala Studio: A Local Story-to-Video Production Workspace"
+version: 0.1.0
+date-released: 2026-07-15
+abstract: "A local web application and CLI for story writing, prompt assembly, browser-based video generation, job monitoring, and publish-ready media workflows."
+authors:
+  - family-names: Chen
+    given-names: Lachlan
+    alias: lachlanchen
+repository-code: "https://github.com/lachlanchen/LalaStudio"
+url: "https://lazying.art"
+keywords:
+  - story writing
+  - video generation
+  - creative tools
+  - Codex
+  - React
+  - local first

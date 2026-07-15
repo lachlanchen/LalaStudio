@@ -1,0 +1,46 @@
+{
+  "name": "lalachan-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "lala-studio": "./bin/lala-studio.js"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c cyan,green \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "tsx watch server/index.ts",
+    "dev:web": "vite --host 127.0.0.1 --port 4311",
+    "start": "tsx server/index.ts",
+    "build": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.app.json && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "cli": "tsx cli/index.ts"
+  },
+  "dependencies": {
+    "commander": "^14.0.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-markdown": "^10.1.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.18.11",
+    "@types/react": "^19.1.16",
+    "@types/react-dom": "^19.1.9",
+    "@types/supertest": "^7.2.1",
+    "@vitejs/plugin-react": "^5.0.4",
+    "concurrently": "^9.2.1",
+    "jsdom": "^27.0.1",
+    "supertest": "^7.1.4",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12",
+    "vitest": "^3.2.4"
+  }
+}
