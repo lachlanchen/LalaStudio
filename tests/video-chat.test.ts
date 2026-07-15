@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isProductionMessage, planProductionRequest } from "../src/video-chat.js";
+import { isProductionMessage, isPublishMessage, planDeliveryRequest, planProductionRequest } from "../src/video-chat.js";
 import type { VideoSettings } from "../src/types.js";
 
 const defaults: VideoSettings = {
@@ -8,14 +8,30 @@ const defaults: VideoSettings = {
   duration: 15,
   ratio: "4:3",
   selectedAssetIds: ["word-card", "zhuangzi", "lightmind", "notebook", "raraxia", "ayachan", "sasakun"],
-  wordCard: { english: "glide", japanese: "滑る", furigana: "すべる", chinese: "滑行" }
+  wordCard: { english: "glide", japanese: "滑る", furigana: "すべる", chinese: "滑行" },
+  preGenerateWordCard: true
 };
 
 describe("video chat planning", () => {
   it("separates story discussion from production requests", () => {
     expect(isProductionMessage("检查这篇故事的对白是否自然")).toBe(false);
     expect(isProductionMessage("请把这个故事生成15秒视频")).toBe(true);
+    expect(isProductionMessage("准备当前故事的视频任务，但不要提交")).toBe(true);
     expect(isProductionMessage("Generate a 30 second video from this story")).toBe(true);
+  });
+
+  it("turns a publish message into a download-aware LazyEdit contract", () => {
+    expect(isPublishMessage("下载后发布这个视频到所有平台")).toBe(true);
+    const request = planDeliveryRequest({
+      storyId: "story-1",
+      message: "发布到 YouTube 和 Instagram",
+      title: "草垫子真的飞起来了",
+      defaultPlatforms: ["shipinhao", "youtube", "instagram", "douyin"],
+      existingVideoId: "story-1.mp4"
+    });
+    expect(request.platforms).toEqual(["youtube", "instagram"]);
+    expect(request.existingVideoId).toBe("story-1.mp4");
+    expect(request.summary).toContain("已找到下载文件");
   });
 
   it("keeps current safe defaults when the request is concise", () => {

@@ -1,10 +1,21 @@
-import type { ProductionRequest, VideoSettings } from "./types.js";
+import type { DeliveryRequest, ProductionRequest, VideoSettings } from "./types.js";
 
 const PRODUCTION_INTENT = [
-  /(?:生成|制作|开始|创建|做成|提交).{0,24}(?:视频|短片|影片|电影|mv)/i,
-  /(?:视频|短片|影片|电影|mv).{0,24}(?:生成|制作|开始|创建|提交)/i,
-  /(?:generate|create|make|submit|render).{0,40}(?:video|film|movie|mv)/i
+  /(?:生成|制作|准备|配置|开始|创建|做成|提交).{0,24}(?:视频|短片|影片|电影|mv)/i,
+  /(?:视频|短片|影片|电影|mv).{0,24}(?:生成|制作|准备|配置|开始|创建|提交)/i,
+  /(?:generate|create|make|prepare|configure|submit|render).{0,40}(?:video|film|movie|mv)/i
 ];
+
+const PUBLISH_INTENT = [
+  /(?:发布|发表|投放|上传).{0,40}(?:视频|短片|影片|电影|mv|平台|小红书|抖音|视频号|油管|youtube|instagram)/i,
+  /(?:视频|短片|影片|电影|mv).{0,40}(?:发布|发表|投放|上传)/i,
+  /(?:publish|post|upload).{0,48}(?:video|film|movie|mv|platform|youtube|instagram|douyin|shipinhao)/i
+];
+
+export function isPublishMessage(message: string): boolean {
+  const clean = message.trim();
+  return clean.length > 0 && PUBLISH_INTENT.some((pattern) => pattern.test(clean));
+}
 
 export function isProductionMessage(message: string): boolean {
   const clean = message.trim();
@@ -59,6 +70,40 @@ export function planProductionRequest(input: {
     storyId: input.storyId,
     sourceMessage: input.message.trim(),
     settings,
+    forceRegenerate: /(?:重新生成|重做|再生成|regenerate|rerun|new\s+version)/i.test(input.message),
     summary
+  };
+}
+
+export function planDeliveryRequest(input: {
+  storyId: string;
+  message: string;
+  title: string;
+  defaultPlatforms: string[];
+  existingVideoId?: string | null;
+}): DeliveryRequest {
+  const requested = [
+    ["shipinhao", /(?:视频号|shipinhao|sph)/i],
+    ["youtube", /(?:youtube|油管|y2b)/i],
+    ["instagram", /(?:instagram|\bins\b)/i],
+    ["douyin", /(?:抖音|douyin)/i]
+  ] as const;
+  const explicit = requested.filter(([, pattern]) => pattern.test(input.message)).map(([platform]) => platform);
+  const allRequested = /(?:全部|所有|四个|全平台|all\s+platforms?)/i.test(input.message);
+  const platforms = allRequested || explicit.length === 0 ? [...input.defaultPlatforms] : explicit;
+  const category: DeliveryRequest["category"] = /(?:lalamv|音乐\s*mv|music\s*video)/i.test(input.message)
+    ? "lalamv"
+    : "lalachan";
+  const existingVideoId = input.existingVideoId || null;
+  const downloadState = existingVideoId ? `已找到下载文件 ${existingVideoId}` : "发布前先从当前小云雀结果下载并验证";
+  return {
+    id: `delivery-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    storyId: input.storyId,
+    sourceMessage: input.message.trim(),
+    title: input.title.trim(),
+    platforms,
+    category,
+    existingVideoId,
+    summary: `${downloadState} · LazyEdit · ${platforms.join(" / ")} · ${category}`
   };
 }

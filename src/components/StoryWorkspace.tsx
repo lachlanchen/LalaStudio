@@ -4,12 +4,14 @@ import {
   Check,
   ChevronDown,
   Clapperboard,
+  Download,
   Eye,
   FileText,
   LoaderCircle,
   MessageSquareText,
   MonitorPlay,
   Play,
+  Radio,
   Save,
   Send,
   Settings2,
@@ -17,7 +19,7 @@ import {
   WandSparkles
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import type { ChatMessage, ModelProfile, ProductionRequest, StoryDocument, StudioJob } from "../types";
+import type { ChatMessage, DeliveryRequest, ModelProfile, ProductionRequest, StoryDocument, StudioJob } from "../types";
 
 interface Props {
   story: StoryDocument | null;
@@ -27,13 +29,16 @@ interface Props {
   models: ModelProfile[];
   activeAiJob: StudioJob | null;
   activeVideoJob: StudioJob | null;
+  activePublishJob: StudioJob | null;
   messages: ChatMessage[];
   productionRequest: ProductionRequest | null;
+  deliveryRequest: DeliveryRequest | null;
   onContent: (content: string) => void;
   onSave: () => void;
   onAi: (action: "chat" | "draft" | "review" | "final", message: string, effort?: string) => void;
   onApplyAi: (content: string) => void;
   onProductionAction: (operation: "inspect" | "prepare" | "generate") => void;
+  onDeliveryAction: (operation: "inspect" | "publish") => void;
 }
 
 export function StoryWorkspace({
@@ -44,13 +49,16 @@ export function StoryWorkspace({
   models,
   activeAiJob,
   activeVideoJob,
+  activePublishJob,
   messages,
   productionRequest,
+  deliveryRequest,
   onContent,
   onSave,
   onAi,
   onApplyAi,
-  onProductionAction
+  onProductionAction,
+  onDeliveryAction
 }: Props) {
   const [editorMode, setEditorMode] = useState<"write" | "preview">("write");
   const [message, setMessage] = useState("");
@@ -59,6 +67,7 @@ export function StoryWorkspace({
   const route = effort === "auto" ? models.find((model) => model.route === "chat") : null;
   const isRunning = activeAiJob?.status === "running" || activeAiJob?.status === "queued";
   const videoRunning = activeVideoJob?.status === "running" || activeVideoJob?.status === "queued";
+  const publishRunning = activePublishJob?.status === "running" || activePublishJob?.status === "queued";
   const wordCount = useMemo(() => (content.match(/[\u3400-\u9fff]|[A-Za-z]+/g) || []).length, [content]);
 
   if (!story) {
@@ -178,7 +187,7 @@ export function StoryWorkspace({
         </div>
 
         <div className="writer-thread" data-testid="chat-thread">
-          {!activeAiJob && !activeVideoJob && !messages.length && !productionRequest && (
+          {!activeAiJob && !activeVideoJob && !activePublishJob && !messages.length && !productionRequest && !deliveryRequest && (
             <div className="writer-empty">
               <MessageSquareText size={22} />
               <strong>Ask about this story</strong>
@@ -238,6 +247,34 @@ export function StoryWorkspace({
                 </button>
                 <button className="primary-button danger-action" data-testid="production-generate" disabled={videoRunning} onClick={() => onProductionAction("generate")}>
                   <Play size={15} /> Generate once
+                </button>
+              </div>
+            </section>
+          )}
+          {deliveryRequest && deliveryRequest.storyId === story.id && (
+            <section className="production-chat-card delivery-chat-card" data-testid="delivery-card" data-request-id={deliveryRequest.id}>
+              <div className="production-card-heading">
+                <div className="production-card-icon"><Radio size={18} /></div>
+                <div><span className="eyebrow">Visible delivery contract</span><strong>Download check + LazyEdit</strong></div>
+              </div>
+              <p>{deliveryRequest.summary}</p>
+              <dl>
+                <div><dt>Download</dt><dd>{deliveryRequest.existingVideoId ? `Verified candidate: ${deliveryRequest.existingVideoId}` : "Check the current Xiaoyunque result before publishing"}</dd></div>
+                <div><dt>Package</dt><dd>Context correction · EN/JP/ZH · portrait fill · top-right logo</dd></div>
+              </dl>
+              {activePublishJob && (
+                <div className={`chat-video-job ${activePublishJob.status}`} data-testid="chat-delivery-job" data-status={activePublishJob.status}>
+                  <div><strong>{activePublishJob.title}</strong><span>{activePublishJob.progress}%</span></div>
+                  <div className="progress-track"><span style={{ width: `${activePublishJob.progress}%` }} /></div>
+                  <small>{activePublishJob.error || activePublishJob.message}</small>
+                </div>
+              )}
+              <div className="production-card-actions">
+                <button className="secondary-button" data-testid="delivery-inspect" disabled={publishRunning} onClick={() => onDeliveryAction("inspect")}>
+                  <Download size={15} /> Inspect download
+                </button>
+                <button className="primary-button danger-action" data-testid="delivery-publish" disabled={publishRunning} onClick={() => onDeliveryAction("publish")}>
+                  <Radio size={15} /> Download if needed + publish
                 </button>
               </div>
             </section>

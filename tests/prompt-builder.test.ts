@@ -13,7 +13,8 @@ const settings = {
     japanese: "一緒",
     furigana: "いっしょ",
     chinese: "一起"
-  }
+  },
+  preGenerateWordCard: true
 };
 
 describe("Xiaoyunque prompt builder", () => {

@@ -23,6 +23,7 @@ import { assertInside, safeId } from "./lib/files.js";
 import {
   launchXyqBrowser,
   listVideos,
+  startDeliveryWorkflow,
   startPublishWorkflow,
   startVideoWorkflow,
   systemStatus
@@ -58,7 +59,8 @@ const videoSettingsSchema = z.object({
   duration: z.number().int().min(5).max(180),
   ratio: z.enum(["4:3", "9:16", "16:9"]),
   selectedAssetIds: z.array(z.string()).min(1).max(12),
-  wordCard: wordCardSchema
+  wordCard: wordCardSchema,
+  preGenerateWordCard: z.boolean().default(true)
 });
 
 export function createApp() {
@@ -87,7 +89,8 @@ export function createApp() {
             duration: 15,
             ratio: "4:3",
             selectedAssetIds: listAssets().filter((asset) => asset.defaultSelected).map((asset) => asset.id),
-            wordCard: { english: "together", japanese: "一緒", furigana: "いっしょ", chinese: "一起" }
+            wordCard: { english: "together", japanese: "一緒", furigana: "いっしょ", chinese: "一起" },
+            preGenerateWordCard: true
           },
           platforms: ["shipinhao", "youtube", "instagram", "douyin"]
         }
@@ -170,7 +173,8 @@ export function createApp() {
         prompt: z.string().min(1).max(50000),
         settings: videoSettingsSchema,
         operation: z.enum(["prepare", "generate"]),
-        paidActionConfirmed: z.boolean().default(false)
+        paidActionConfirmed: z.boolean().default(false),
+        forceRegenerate: z.boolean().default(false)
       })
       .parse(req.body);
     if (parsed.operation === "generate" && !parsed.paidActionConfirmed) {
@@ -178,14 +182,19 @@ export function createApp() {
     }
     const issues = validateVideoPrompt(parsed.prompt);
     if (issues.length) return res.status(400).json({ error: "Prompt preflight failed", issues });
-    storyRepository.get(parsed.storyId);
+    const story = storyRepository.get(parsed.storyId);
+    const existingVideoPath = story.videoPath
+      ? assertInside(repoRoot, path.join(repoRoot, story.videoPath))
+      : null;
     const job = startVideoWorkflow({
       jobs,
       storyId: parsed.storyId,
       prompt: parsed.prompt,
       settings: parsed.settings as VideoSettings,
       operation: parsed.operation,
-      paidActionConfirmed: parsed.paidActionConfirmed
+      paidActionConfirmed: parsed.paidActionConfirmed,
+      existingVideoPath,
+      forceRegenerate: parsed.forceRegenerate
     });
     res.status(202).json(job);
   });
@@ -209,6 +218,36 @@ export function createApp() {
       jobs,
       videoPath,
       storyPath,
+      title: parsed.title,
+      platforms: parsed.platforms,
+      category: parsed.category,
+      publishConfirmed: parsed.publishConfirmed
+    });
+    res.status(202).json(job);
+  });
+
+  app.post("/api/delivery/jobs", (req, res) => {
+    const parsed = z
+      .object({
+        storyId: z.string().min(1),
+        title: z.string().min(1).max(180),
+        platforms: z.array(z.enum(["shipinhao", "youtube", "instagram", "douyin"])).min(1),
+        category: z.enum(["lalachan", "lalamv"]).default("lalachan"),
+        publishConfirmed: z.literal(true)
+      })
+      .parse(req.body);
+    const storyId = safeId(parsed.storyId);
+    const story = storyRepository.get(storyId);
+    const storyPath = assertInside(storiesRoot, path.join(storiesRoot, `${storyId}.md`));
+    const existingVideoPath = story.videoPath
+      ? assertInside(repoRoot, path.join(repoRoot, story.videoPath))
+      : null;
+    const job = startDeliveryWorkflow({
+      jobs,
+      storyId,
+      storyPath,
+      existingVideoPath,
+      expectedDuration: story.duration,
       title: parsed.title,
       platforms: parsed.platforms,
       category: parsed.category,

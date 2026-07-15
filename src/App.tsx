@@ -19,11 +19,12 @@ import { PromptWorkspace } from "./components/PromptWorkspace";
 import { PublishWorkspace } from "./components/PublishWorkspace";
 import { RunsWorkspace } from "./components/RunsWorkspace";
 import { StoryWorkspace } from "./components/StoryWorkspace";
-import { isProductionMessage, planProductionRequest } from "./video-chat";
+import { isProductionMessage, isPublishMessage, planDeliveryRequest, planProductionRequest } from "./video-chat";
 import type {
   AssetDefinition,
   BootstrapData,
   ChatMessage,
+  DeliveryRequest,
   ModelProfile,
   ProductionRequest,
   ServiceStatus,
@@ -75,6 +76,7 @@ function App() {
   const [activePublishJobId, setActivePublishJobId] = useState<string | null>(null);
   const [chatByStory, setChatByStory] = useState<Record<string, ChatMessage[]>>(() => loadLocalState("lala-studio-chat-v1", {}));
   const [productionRequest, setProductionRequest] = useState<ProductionRequest | null>(() => loadLocalState("lala-studio-production-v1", null));
+  const [deliveryRequest, setDeliveryRequest] = useState<DeliveryRequest | null>(() => loadLocalState("lala-studio-delivery-v1", null));
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState("");
   const [publishTitle, setPublishTitle] = useState("");
@@ -88,6 +90,7 @@ function App() {
   const [fatalError, setFatalError] = useState<string | null>(null);
   const aiJobContext = useRef(new Map<string, { storyId: string; action: "chat" | "draft" | "review" | "final" }>());
   const deliveredAiJobs = useRef(new Set<string>());
+  const refreshedPublishJobs = useRef(new Set<string>());
 
   const notify = (message: string) => {
     setToast(message);
@@ -162,9 +165,29 @@ function App() {
     else window.localStorage.removeItem("lala-studio-production-v1");
   }, [productionRequest]);
 
+  useEffect(() => {
+    if (deliveryRequest) window.localStorage.setItem("lala-studio-delivery-v1", JSON.stringify(deliveryRequest));
+    else window.localStorage.removeItem("lala-studio-delivery-v1");
+  }, [deliveryRequest]);
+
   const activeAiJob = jobs.find((job) => job.id === activeAiJobId) || null;
   const activeVideoJob = jobs.find((job) => job.id === activeVideoJobId) || null;
   const activePublishJob = jobs.find((job) => job.id === activePublishJobId) || null;
+
+  useEffect(() => {
+    if (!activePublishJob || !["done", "failed", "cancelled"].includes(activePublishJob.status)) return;
+    if (refreshedPublishJobs.current.has(activePublishJob.id)) return;
+    refreshedPublishJobs.current.add(activePublishJob.id);
+    const currentStory = story;
+    void api.videos().then(({ videos: next }) => {
+      setVideos(next);
+      if (currentStory && deliveryRequest?.storyId === currentStory.id) {
+        const expected = currentStory.videoPath?.split("/").pop();
+        const match = next.find((video) => video.id === expected || video.name === expected);
+        if (match) setSelectedVideo(match.id);
+      }
+    }).catch(() => undefined);
+  }, [activePublishJob, deliveryRequest, story]);
 
   useEffect(() => {
     if (!activeAiJob || !["done", "failed", "cancelled"].includes(activeAiJob.status)) return;
@@ -245,6 +268,30 @@ function App() {
 
   const runAi = async (action: "chat" | "draft" | "review" | "final", message: string, effort?: string) => {
     if (!story || !videoSettings) return;
+    if (action === "chat" && isPublishMessage(message)) {
+      const expected = story.videoPath?.split("/").pop() || null;
+      const existing = expected ? videos.find((video) => video.id === expected || video.name === expected) : null;
+      const request = planDeliveryRequest({
+        storyId: story.id,
+        message,
+        title: story.title.replace(/^\d{4}-\d{2}-\d{2}\s*/, ""),
+        defaultPlatforms: boot?.defaults.platforms || ["shipinhao", "youtube", "instagram", "douyin"],
+        existingVideoId: existing?.id || null
+      });
+      setDeliveryRequest(request);
+      setProductionRequest(null);
+      setPlatforms(request.platforms);
+      setCategory(request.category);
+      setPublishTitle(request.title);
+      if (request.existingVideoId) setSelectedVideo(request.existingVideoId);
+      appendChat(story.id, { role: "user", content: message, kind: "text" });
+      appendChat(story.id, {
+        role: "assistant",
+        kind: "production",
+        content: `我已建立可检查的发布合同：${request.summary}。Studio 会先验证下载；缺少文件时只下载当前已完成结果，不重新生成，然后把故事作为上下文交给 LazyEdit。`
+      });
+      return;
+    }
     if (action === "chat" && isProductionMessage(message)) {
       const request = planProductionRequest({
         storyId: story.id,
@@ -253,6 +300,7 @@ function App() {
         storyDuration: story.duration
       });
       setProductionRequest(request);
+      setDeliveryRequest(null);
       setVideoSettings(request.settings);
       appendChat(story.id, { role: "user", content: message, kind: "text" });
       appendChat(story.id, {
@@ -276,13 +324,13 @@ function App() {
     }
   };
 
-  const startVideoJob = async (operation: "prepare" | "generate", settings: VideoSettings, nextPrompt: string) => {
+  const startVideoJob = async (operation: "prepare" | "generate", settings: VideoSettings, nextPrompt: string, forceRegenerate = false) => {
     if (!story) return;
     const confirmed = operation === "generate"
       ? window.confirm(`Submit one paid ${settings.duration}s ${settings.model} generation after visible preflight?`)
       : false;
     if (operation === "generate" && !confirmed) return;
-    const job = await api.videoJob({ storyId: story.id, prompt: nextPrompt, settings, operation, paidActionConfirmed: confirmed });
+    const job = await api.videoJob({ storyId: story.id, prompt: nextPrompt, settings, operation, paidActionConfirmed: confirmed, forceRegenerate });
     setJobs((current) => [job, ...current]);
     setActiveVideoJobId(job.id);
     setSelectedRunId(job.id);
@@ -311,13 +359,41 @@ function App() {
         notify("Production setup is ready for inspection");
         return;
       }
-      await startVideoJob(operation, productionRequest.settings, result.prompt);
+      await startVideoJob(operation, productionRequest.settings, result.prompt, productionRequest.forceRegenerate);
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       appendChat(story.id, { role: "assistant", content: `Video preparation stopped: ${detail}`, kind: "error" });
       notify(detail);
     } finally {
       setBuildingPrompt(false);
+    }
+  };
+
+  const runChatDelivery = async (operation: "inspect" | "publish") => {
+    if (!story || !deliveryRequest || deliveryRequest.storyId !== story.id) return;
+    if (operation === "inspect") {
+      if (deliveryRequest.existingVideoId) setSelectedVideo(deliveryRequest.existingVideoId);
+      setPlatforms(deliveryRequest.platforms);
+      setCategory(deliveryRequest.category);
+      setPublishTitle(deliveryRequest.title);
+      setView("publish");
+      notify(deliveryRequest.existingVideoId ? "Downloaded video selected for inspection" : "No local video yet; publish will download the current completed result first");
+      return;
+    }
+    if (!window.confirm(`Download if needed, then process and queue to ${deliveryRequest.platforms.length} platforms?`)) return;
+    try {
+      const job = await api.deliveryJob({
+        storyId: story.id,
+        title: deliveryRequest.title,
+        platforms: deliveryRequest.platforms,
+        category: deliveryRequest.category,
+        publishConfirmed: true
+      });
+      setJobs((current) => [job, ...current]);
+      setActivePublishJobId(job.id);
+      setSelectedRunId(job.id);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -353,7 +429,7 @@ function App() {
 
   const appMain = useMemo(() => {
     if (view === "write") {
-      return <StoryWorkspace story={story} content={content} dirty={dirty} saving={saving} models={models} activeAiJob={activeAiJob} activeVideoJob={activeVideoJob} messages={story ? chatByStory[story.id] || [] : []} productionRequest={productionRequest} onContent={(value) => { setContent(value); setDirty(value !== story?.content); }} onSave={saveStory} onAi={runAi} onApplyAi={(value) => { setContent(value); setDirty(value !== story?.content); }} onProductionAction={runChatProduction} />;
+      return <StoryWorkspace story={story} content={content} dirty={dirty} saving={saving} models={models} activeAiJob={activeAiJob} activeVideoJob={activeVideoJob} activePublishJob={activePublishJob} messages={story ? chatByStory[story.id] || [] : []} productionRequest={productionRequest} deliveryRequest={deliveryRequest} onContent={(value) => { setContent(value); setDirty(value !== story?.content); }} onSave={saveStory} onAi={runAi} onApplyAi={(value) => { setContent(value); setDirty(value !== story?.content); }} onProductionAction={runChatProduction} onDeliveryAction={runChatDelivery} />;
     }
     if (view === "prompt" && videoSettings) {
       return <PromptWorkspace story={story} assets={assets} settings={videoSettings} prompt={prompt} issues={promptIssues} building={buildingPrompt} onBuild={buildPrompt} onPrompt={setPrompt} onCopy={() => { void navigator.clipboard.writeText(prompt); notify("Prompt copied"); }} />;
@@ -365,7 +441,7 @@ function App() {
       return <PublishWorkspace story={story} videos={videos} selectedVideo={selectedVideo} title={publishTitle} platforms={platforms} category={category} activeJob={activePublishJob} onVideo={setSelectedVideo} onTitle={setPublishTitle} onPlatforms={setPlatforms} onCategory={setCategory} onRun={runPublish} />;
     }
     return <RunsWorkspace jobs={jobs} selectedId={selectedRunId} onSelect={setSelectedRunId} onCancel={cancelJob} />;
-  }, [view, story, content, dirty, saving, models, activeAiJob, activeVideoJob, chatByStory, productionRequest, videoSettings, assets, prompt, promptIssues, buildingPrompt, status, videos, selectedVideo, publishTitle, platforms, category, activePublishJob, jobs, selectedRunId, buildPrompt]);
+  }, [view, story, content, dirty, saving, models, activeAiJob, activeVideoJob, activePublishJob, chatByStory, productionRequest, deliveryRequest, videoSettings, assets, prompt, promptIssues, buildingPrompt, status, videos, selectedVideo, publishTitle, platforms, category, jobs, selectedRunId, buildPrompt]);
 
   if (fatalError) {
     return <div className="fatal-screen"><Aperture size={30} /><h1>Lala Studio could not start</h1><p>{fatalError}</p><code>npm run dev</code></div>;
@@ -383,6 +459,8 @@ function App() {
       data-ai-job-id={activeAiJob?.id || ""}
       data-video-job-status={activeVideoJob?.status || "idle"}
       data-video-job-id={activeVideoJob?.id || ""}
+      data-delivery-job-status={activePublishJob?.status || "idle"}
+      data-delivery-job-id={activePublishJob?.id || ""}
     >
       <header className="topbar">
         <button className="mobile-menu" onClick={() => setMobileNav(!mobileNav)} aria-label="Toggle navigation"><Menu size={20} /></button>
@@ -393,7 +471,7 @@ function App() {
         <div className="project-switcher"><Command size={15} /><span>RaraXiaAndAyaChan</span></div>
         <div className="service-statuses">
           <span className={status?.codex ? "online" : "offline"}><i /> GPT-5.6-Sol</span>
-          <span className={status?.xyqCdp ? "online" : "offline"}><i /> Xiaoyunque</span>
+          <span className={status?.xyqCdp && status?.xyqNoVnc ? "online" : "offline"}><i /> Xiaoyunque noVNC</span>
           <span className={status?.lazyEdit ? "online" : "offline"}><i /> LazyEdit</span>
         </div>
         <button className="icon-button" title="Settings" aria-label="Settings"><Settings size={17} /></button>

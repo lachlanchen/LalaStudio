@@ -26,8 +26,18 @@ test("opens production controls", async ({ page }, testInfo) => {
   await page.locator('.nav-items button[title="Produce"]').click();
   await expect(page.getByText("Video settings", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Video model")).toHaveValue("Seedance 2.0 Mini 体验版");
+  await expect(page.getByTestId("pregenerate-word-card")).toBeChecked();
   await page.screenshot({
     path: `.playwright/${testInfo.project.name}-produce.png`,
     fullPage: true
   });
+});
+
+test("turns a publish chat command into a delivery contract", async ({ page }) => {
+  await page.goto("/");
+  await page.getByTestId("chat-input").fill("下载当前视频并发布到所有平台");
+  await page.getByTestId("chat-send").click();
+  await expect(page.getByTestId("delivery-card")).toBeVisible();
+  await expect(page.getByTestId("delivery-card")).toContainText("LazyEdit");
+  await expect(page.getByTestId("delivery-publish")).toBeVisible();
 });

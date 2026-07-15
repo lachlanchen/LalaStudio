@@ -82,9 +82,13 @@ async function readStatus(page) {
     userMessages: document.querySelectorAll('[data-testid="chat-message-user"]').length,
     assistantMessages: document.querySelectorAll('[data-testid="chat-message-assistant"]').length,
     productionCard: Boolean(document.querySelector('[data-testid="production-card"]')),
+    deliveryCard: Boolean(document.querySelector('[data-testid="delivery-card"]')),
     aiJob: document.querySelector('[data-testid="ai-job"]')?.getAttribute("data-status") || null,
     videoJob: document.querySelector('[data-testid="chat-video-job"]')?.getAttribute("data-status")
       || document.querySelector('[data-testid="production-job"]')?.getAttribute("data-status")
+      || null,
+    deliveryJob: document.querySelector('[data-testid="chat-delivery-job"]')?.getAttribute("data-status")
+      || root.getAttribute("data-delivery-job-status")
       || null
   }));
   return { url: page.url(), title: await page.title(), ...status };
@@ -131,11 +135,23 @@ async function sendChat(page, message, action = "chat") {
   const previousProductionId = await productionCards.count() > 0
     ? await productionCards.first().getAttribute("data-request-id")
     : null;
+  const deliveryCards = page.getByTestId("delivery-card");
+  const previousDeliveryId = await deliveryCards.count() > 0
+    ? await deliveryCards.first().getAttribute("data-request-id")
+    : null;
   await page.getByTestId("chat-input").fill(message);
   const button = action === "chat" ? "chat-send" : `quick-${action}`;
   await page.getByTestId(button).click();
   if (action === "chat") {
-    const production = /(?:生成|制作|开始|创建|做成|提交).{0,24}(?:视频|短片|影片|电影|mv)|(?:视频|短片|影片|电影|mv).{0,24}(?:生成|制作|开始|创建|提交)|(?:generate|create|make|submit|render).{0,40}(?:video|film|movie|mv)/i.test(message);
+    const delivery = /(?:发布|发表|投放|上传).{0,40}(?:视频|短片|影片|电影|mv|平台|小红书|抖音|视频号|油管|youtube|instagram)|(?:视频|短片|影片|电影|mv).{0,40}(?:发布|发表|投放|上传)|(?:publish|post|upload).{0,48}(?:video|film|movie|mv|platform|youtube|instagram|douyin|shipinhao)/i.test(message);
+    if (delivery) {
+      await page.waitForFunction((previous) => {
+        const card = document.querySelector('[data-testid="delivery-card"]');
+        return Boolean(card && card.getAttribute("data-request-id") !== previous);
+      }, previousDeliveryId, { timeout: 30_000 });
+      return { kind: "delivery" };
+    }
+    const production = /(?:生成|制作|准备|配置|开始|创建|做成|提交).{0,24}(?:视频|短片|影片|电影|mv)|(?:视频|短片|影片|电影|mv).{0,24}(?:生成|制作|准备|配置|开始|创建|提交)|(?:generate|create|make|prepare|configure|submit|render).{0,40}(?:video|film|movie|mv)/i.test(message);
     if (production) {
       await page.waitForFunction((previous) => {
         const card = document.querySelector('[data-testid="production-card"]');
@@ -154,6 +170,33 @@ async function sendChat(page, message, action = "chat") {
   await page.waitForFunction((previous) => document.querySelectorAll('[data-testid="chat-message-assistant"]').length > previous, previousAssistantCount, { timeout: 30_000 });
   const response = await page.getByTestId("chat-message-assistant").last().innerText();
   return { kind: "assistant", response };
+}
+
+async function deliveryAction(page, operation, confirmPublish) {
+  if (!["inspect", "publish"].includes(operation)) throw new Error(`Unsupported delivery operation: ${operation}`);
+  await ensureView(page, "write");
+  if (operation === "inspect") {
+    await page.getByTestId("delivery-inspect").click();
+    await page.locator(".publish-workspace").waitFor({ state: "visible", timeout: 30_000 });
+    return { status: "inspected" };
+  }
+  if (!confirmPublish) throw new Error("Publishing requires --confirm-publish");
+  page.once("dialog", async (dialog) => {
+    if (dialog.type() !== "confirm") throw new Error(`Unexpected dialog: ${dialog.type()}`);
+    await dialog.accept();
+  });
+  await page.getByTestId("delivery-publish").click();
+  await page.waitForFunction(() => {
+    const state = document.querySelector('[data-testid="lala-studio-app"]')?.getAttribute("data-delivery-job-status");
+    return state === "done" || state === "failed" || state === "cancelled";
+  }, undefined, { timeout: waitMs });
+  await ensureView(page, "write");
+  const job = page.getByTestId("chat-delivery-job");
+  await job.waitFor({ state: "visible", timeout: 30_000 });
+  const state = await job.getAttribute("data-status");
+  const detail = (await job.innerText()).trim();
+  if (state !== "done") throw new Error(`Delivery job ${state}: ${detail}`);
+  return { status: state, detail };
 }
 
 async function applyLast(page) {
@@ -232,6 +275,7 @@ function usage() {
     `  save\n` +
     `  cancel-active\n` +
     `  production [--message TEXT] --operation inspect|prepare|generate [--confirm-paid]\n` +
+    `  delivery [--message TEXT] --operation inspect|publish [--confirm-publish]\n` +
     `  run --story-match TEXT --story-message TEXT [--action final] --production-message TEXT --operation inspect|prepare|generate [--confirm-paid]\n\n` +
     `All commands manipulate visible DOM controls through the dedicated Chrome CDP session.\n`);
 }
@@ -273,6 +317,9 @@ try {
   } else if (command === "production") {
     if (options.message) await sendChat(page, String(options.message), "chat");
     result = await productionAction(page, String(options.operation || "inspect"), Boolean(options["confirm-paid"]));
+  } else if (command === "delivery") {
+    if (options.message) await sendChat(page, String(options.message), "chat");
+    result = await deliveryAction(page, String(options.operation || "inspect"), Boolean(options["confirm-publish"]));
   } else if (command === "run") {
     const selected = await selectStory(page, required(options, "story-match"));
     const storyResult = await sendChat(page, required(options, "story-message"), String(options.action || "final"));

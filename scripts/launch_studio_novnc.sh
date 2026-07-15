@@ -11,6 +11,8 @@ CDP_PORT="${LALA_STUDIO_BROWSER_CDP_PORT:-9466}"
 APP_PORT="${LALA_STUDIO_APP_PORT:-4412}"
 PROFILE_DIR="${LALA_STUDIO_BROWSER_PROFILE:-${XDG_CACHE_HOME:-$HOME/.cache}/lala-studio-browser}"
 STATE_DIR="${LALA_STUDIO_DESKTOP_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/lala-studio-novnc}"
+XYQ_CDP_PORT="${XYQ_CDP_PORT:-9344}"
+XYQ_NOVNC_PORT="${XYQ_NOVNC_PORT:-6099}"
 PROJECT_ROOT="${LALA_STUDIO_PROJECT_ROOT:-}"
 ACTION="start"
 BUILD="auto"
@@ -142,6 +144,8 @@ fi
 
 if ! curl -fsS "$APP_URL/api/health" >/dev/null 2>&1; then
   env LALA_STUDIO_PROJECT_ROOT="$PROJECT_ROOT" LALA_STUDIO_PORT="$APP_PORT" \
+    LALA_STUDIO_XYQ_CDP_URL="http://127.0.0.1:$XYQ_CDP_PORT" \
+    LALA_STUDIO_XYQ_NOVNC_URL="http://127.0.0.1:$XYQ_NOVNC_PORT/vnc_lite.html?host=127.0.0.1&port=$XYQ_NOVNC_PORT&autoconnect=1&resize=remote" \
     setsid npm --prefix "$STUDIO_ROOT" run start >"$LOG_DIR/studio.log" 2>&1 < /dev/null &
   echo "$!" >"$STATE_DIR/studio.pid"
   for _ in {1..120}; do curl -fsS "$APP_URL/api/health" >/dev/null 2>&1 && break; sleep .25; done

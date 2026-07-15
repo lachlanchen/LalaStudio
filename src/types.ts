@@ -14,6 +14,18 @@ export interface ProductionRequest {
   storyId: string;
   sourceMessage: string;
   settings: VideoSettings;
+  forceRegenerate: boolean;
+  summary: string;
+}
+
+export interface DeliveryRequest {
+  id: string;
+  storyId: string;
+  sourceMessage: string;
+  title: string;
+  platforms: string[];
+  category: "lalachan" | "lalamv";
+  existingVideoId: string | null;
   summary: string;
 }
 
@@ -100,6 +112,7 @@ export interface ServiceStatus {
   codex: boolean;
   ffmpeg: boolean;
   xyqCdp: boolean;
+  xyqNoVnc: boolean;
   lazyEdit: boolean;
   noVncUrl: string;
   cdpUrl: string;
@@ -113,6 +126,7 @@ export interface VideoSettings {
   ratio: "4:3" | "9:16" | "16:9";
   selectedAssetIds: string[];
   wordCard: WordCard;
+  preGenerateWordCard: boolean;
 }
 
 export interface BootstrapData {

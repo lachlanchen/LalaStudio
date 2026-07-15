@@ -15,6 +15,20 @@ Lala Studio includes a dedicated virtual desktop and a Playwright controller for
 
 Override any value with the `LALA_STUDIO_*` environment variables or launcher flags.
 
+Xiaoyunque uses a separate observable desktop and the existing logged-in profile:
+
+| Service | Default |
+| --- | --- |
+| X display | `:98` |
+| x11vnc | `127.0.0.1:5908` |
+| noVNC | `http://127.0.0.1:6099/vnc_lite.html?host=127.0.0.1&port=6099&autoconnect=1&resize=remote` |
+| Chrome CDP | `http://127.0.0.1:9344` |
+| Chrome profile | `${XDG_CACHE_HOME:-$HOME/.cache}/xyq-chrome` |
+
+`scripts/launch_xyq_novnc.sh start` reuses a running profile when it can prove the owning X display. Otherwise it starts the canonical `:98` desktop. A production job fails closed when CDP is active but its window cannot be exposed through noVNC.
+
+Lala Studio uses `LALA_STUDIO_XYQ_CDP_URL` and `LALA_STUDIO_XYQ_NOVNC_URL` for this delegated browser. These dedicated variables take priority over legacy project-wide `XYQ_*` values so the visible Studio workflow cannot silently attach to a different browser.
+
 ## Launch
 
 ```bash
@@ -37,6 +51,9 @@ node tools/lala-studio-browser.mjs save
 node tools/lala-studio-browser.mjs production \
   --message "Generate this 15 second 4:3 video with the lowest-credit model" \
   --operation inspect
+node tools/lala-studio-browser.mjs delivery \
+  --message "Download the current result if needed and publish it to all platforms" \
+  --operation inspect
 ```
 
 For an explicitly requested paid run:
@@ -46,9 +63,16 @@ node tools/lala-studio-browser.mjs production \
   --operation generate \
   --confirm-paid \
   --wait-seconds 7200
+
+node tools/lala-studio-browser.mjs delivery \
+  --operation publish \
+  --confirm-publish \
+  --wait-seconds 10800
 ```
 
-The controller does not mutate Studio APIs directly. It types, clicks, and waits on visible DOM state through the dedicated Chrome CDP session. Evidence is stored under `.runtime/browser-evidence/`.
+The controller does not mutate Studio APIs directly. It types, clicks, and waits on visible DOM state through the dedicated Chrome CDP session. A publish chat command becomes a visible delivery contract. Studio verifies an existing MP4 or performs a download-only Xiaoyunque pass, then invokes the normal one-command LazyEdit workflow. Evidence is stored under `.runtime/browser-evidence/`.
+
+When the words-card asset is enabled, `Generate card with Codex first` is on by default. The production executor uses the base words-card image only as a design reference, creates a new PNG with the exact episode word, visually verifies its text, and uploads that generated PNG. Card generation failure blocks paid submission.
 
 ## Recovery
 

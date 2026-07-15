@@ -1,0 +1,29 @@
+import { describe, expect, it } from "vitest";
+import { buildVideoExecutorTask } from "../server/workflows.js";
+
+describe("visible Xiaoyunque production contract", () => {
+  it("requires noVNC and a Codex-generated word card before upload", () => {
+    const task = buildVideoExecutorTask({
+      storyId: "story-1",
+      promptPath: "/tmp/prompt.md",
+      assetIds: ["word-card", "raraxia"],
+      assetPaths: ["/tmp/words-card.jpg", "/tmp/raraxia.jpeg"],
+      settings: {
+        mode: "short",
+        model: "Seedance 2.0 Mini 体验版",
+        duration: 15,
+        ratio: "4:3",
+        selectedAssetIds: ["word-card", "raraxia"],
+        wordCard: { english: "glide", japanese: "滑る", furigana: "すべる", chinese: "滑行" },
+        preGenerateWordCard: true
+      },
+      operation: "prepare",
+      runDir: "/tmp/run"
+    });
+    expect(task).toContain("noVNC desktop");
+    expect(task).toContain("Codex image generation");
+    expect(task).toContain("generated-word-card.png");
+    expect(task).toContain("English: glide");
+    expect(task).toContain("check whether this exact story result is already downloaded");
+  });
+});

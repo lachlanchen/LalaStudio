@@ -16,7 +16,7 @@ describe("Studio API", () => {
       expect.objectContaining({ route: "chat", model: "gpt-5.6-sol", effort: "low" }),
       expect.objectContaining({ route: "workflow", model: "gpt-5.6-sol", effort: "ultra" })
     ]));
-    expect(response.body.defaults.video).toMatchObject({ duration: 15, ratio: "4:3" });
+    expect(response.body.defaults.video).toMatchObject({ duration: 15, ratio: "4:3", preGenerateWordCard: true });
     expect(response.body.defaults.video.selectedAssetIds).not.toContain("trio");
   }, 15_000);
 

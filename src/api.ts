@@ -46,6 +46,7 @@ export const api = {
     settings: VideoSettings;
     operation: "prepare" | "generate";
     paidActionConfirmed: boolean;
+    forceRegenerate?: boolean;
   }) =>
     request<StudioJob>("/api/video/jobs", { method: "POST", body: JSON.stringify(input) }),
   publishJob: (input: {
@@ -56,6 +57,14 @@ export const api = {
     category: "lalachan" | "lalamv";
     publishConfirmed: boolean;
   }) => request<StudioJob>("/api/publish/jobs", { method: "POST", body: JSON.stringify(input) }),
+  deliveryJob: (input: {
+    storyId: string;
+    title: string;
+    platforms: string[];
+    category: "lalachan" | "lalamv";
+    publishConfirmed: true;
+  }) => request<StudioJob>("/api/delivery/jobs", { method: "POST", body: JSON.stringify(input) }),
+  videos: () => request<{ videos: BootstrapData["videos"] }>("/api/videos"),
   jobs: () => request<{ jobs: StudioJob[] }>("/api/jobs"),
   job: (id: string) => request<StudioJob>(`/api/jobs/${encodeURIComponent(id)}`),
   cancelJob: (id: string) => request<StudioJob>(`/api/jobs/${encodeURIComponent(id)}/cancel`, { method: "POST", body: "{}" }),

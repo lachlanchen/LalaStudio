@@ -73,6 +73,7 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
 
         <div className="service-row">
           <div className={status?.xyqCdp ? "online" : "offline"}><span /> Browser CDP</div>
+          <div className={status?.xyqNoVnc ? "online" : "offline"}><span /> Visible noVNC</div>
           <div className={status?.codex ? "online" : "offline"}><span /> Production agent</div>
           <div className={prompt && !issues.length ? "online" : "offline"}><span /> Prompt preflight</div>
           {status?.noVncUrl && <a href={status.noVncUrl} target="_blank" rel="noreferrer">noVNC <ExternalLink size={13} /></a>}
@@ -146,6 +147,15 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
 
         {settings.selectedAssetIds.includes("word-card") && (
           <div className="word-card-fields">
+            <label className="word-card-generation">
+              <input
+                data-testid="pregenerate-word-card"
+                type="checkbox"
+                checked={settings.preGenerateWordCard}
+                onChange={(event) => onSettings({ ...settings, preGenerateWordCard: event.target.checked })}
+              />
+              <span><strong>Generate card with Codex first</strong><small>Use the reference design, verify the exact word, then upload the generated PNG.</small></span>
+            </label>
             <label>English<input value={settings.wordCard.english} onChange={(event) => onSettings({ ...settings, wordCard: { ...settings.wordCard, english: event.target.value } })} /></label>
             <label>Japanese<input value={settings.wordCard.japanese} onChange={(event) => onSettings({ ...settings, wordCard: { ...settings.wordCard, japanese: event.target.value } })} /></label>
             <label>Furigana<input value={settings.wordCard.furigana} onChange={(event) => onSettings({ ...settings, wordCard: { ...settings.wordCard, furigana: event.target.value } })} /></label>

@@ -84,4 +84,5 @@ export interface VideoSettings {
   ratio: "4:3" | "9:16" | "16:9";
   selectedAssetIds: string[];
   wordCard: WordCard;
+  preGenerateWordCard: boolean;
 }
