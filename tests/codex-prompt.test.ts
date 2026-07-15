@@ -1,0 +1,34 @@
+import { describe, expect, it } from "vitest";
+import { buildAiPrompt, buildCodexArgs } from "../server/codex.js";
+import { modelProfiles } from "../server/config.js";
+
+describe("co-writer prompt contract", () => {
+  it("keeps final writing hermetic and save-ready", () => {
+    const prompt = buildAiPrompt({
+      action: "final",
+      message: "润色当前故事",
+      duration: 15,
+      story: "# 草垫飞行\n\n## 故事\n\n大家滑下山坡。"
+    });
+    expect(prompt).toContain("Do not browse, call tools, spawn agents, or read files");
+    expect(prompt).toContain("complete save-ready Markdown document");
+    expect(prompt).toContain("## 对应词卡");
+    expect(prompt).toContain("15 秒中文短片");
+  });
+
+  it("keeps production workflows in one accountable executor", () => {
+    const args = buildCodexArgs(
+      {
+        profile: modelProfiles.workflow,
+        sandbox: "danger-full-access",
+        singleExecutor: true
+      },
+      "/tmp/lala-studio-output.md"
+    );
+
+    expect(args).toContain("multi_agent");
+    expect(args).toContain("apps");
+    expect(args).toContain("enable_mcp_apps");
+    expect(args).toContain("danger-full-access");
+  });
+});

@@ -156,11 +156,21 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .quick-actions button { min-height: 34px; display: flex; align-items: center; gap: 7px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 5px; background: white; color: #48534e; cursor: pointer; font-size: 9px; text-align: left; }
 .quick-actions button:first-child { grid-column: 1 / -1; }
 .quick-actions button:hover { border-color: #86b8ae; color: var(--teal); }
-.writer-thread { min-height: 0; overflow: auto; padding: 12px; }
+.writer-thread { min-height: 0; display: flex; flex-direction: column; gap: 9px; overflow: auto; padding: 12px; scroll-behavior: smooth; }
 .writer-empty { min-height: 170px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #75807b; text-align: center; }
 .writer-empty strong { color: #39433f; font-size: 12px; }
 .writer-empty p { max-width: 230px; margin: 0; font-size: 10px; line-height: 1.5; }
 .job-message, .ai-result { padding: 11px; border: 1px solid var(--line); border-radius: 6px; background: white; }
+.chat-message { width: 92%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 6px; background: white; color: #39423f; font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
+.chat-message.user { align-self: flex-end; color: white; border-color: #176d65; background: #176d65; }
+.chat-message.assistant { align-self: flex-start; }
+.chat-message.error { color: #823c33; border-color: #e6beb6; background: #fff4f1; }
+.chat-message p { margin: 4px 0; }
+.chat-message h1, .chat-message h2 { margin: 7px 0 4px; font-size: 12px; }
+.chat-message ul, .chat-message ol { margin: 5px 0; padding-left: 18px; }
+.chat-message-label { margin-bottom: 4px; color: #77817c; font-size: 8px; font-weight: 750; text-transform: uppercase; }
+.chat-message.user .chat-message-label { color: #bfe1dc; }
+.chat-apply { margin-top: 7px; padding: 0; font-size: 9px; }
 .job-message > div:first-child { display: flex; align-items: center; gap: 7px; }
 .job-message strong { font-size: 10px; }
 .job-message small { display: block; margin-top: 6px; color: var(--muted); font-size: 8px; }
@@ -169,10 +179,28 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .ai-result { margin-top: 10px; max-height: none; color: #39423f; font-size: 10px; line-height: 1.65; }
 .ai-result h1, .ai-result h2 { font-size: 13px; }
 .ai-result .full { margin-top: 10px; }
-.writer-composer { position: relative; padding: 10px 12px 12px; border-top: 1px solid var(--line); }
-.writer-composer textarea { width: 100%; height: 74px; resize: none; padding: 10px 40px 10px 10px; border: 1px solid var(--line-strong); border-radius: 6px; outline: 0; background: white; font-size: 10px; line-height: 1.5; }
+.production-chat-card { padding: 11px; border: 1px solid #90bdb5; border-radius: 6px; background: #f8fcfa; box-shadow: 0 6px 18px rgba(21, 68, 59, .08); }
+.production-card-heading { display: flex; align-items: center; gap: 9px; }
+.production-card-heading > div:last-child { display: grid; gap: 2px; }
+.production-card-heading strong { font-size: 11px; }
+.production-card-icon { width: 30px; height: 30px; display: grid; place-items: center; flex: 0 0 auto; color: white; border-radius: 5px; background: var(--teal); }
+.production-chat-card > p { margin: 9px 0; color: #3f4b46; font-size: 9px; line-height: 1.5; }
+.production-chat-card dl { margin: 0; border-block: 1px solid #d5e5df; }
+.production-chat-card dl > div { display: grid; grid-template-columns: 65px minmax(0, 1fr); gap: 8px; padding: 6px 0; font-size: 8px; }
+.production-chat-card dt { color: var(--muted); }
+.production-chat-card dd { margin: 0; overflow-wrap: anywhere; font-weight: 650; }
+.production-card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+.production-card-actions .danger-action { grid-column: 1 / -1; }
+.production-card-actions button { min-width: 0; padding-inline: 8px; font-size: 9px; }
+.chat-video-job { margin-top: 9px; padding: 8px; border: 1px solid var(--line); border-radius: 5px; background: white; }
+.chat-video-job > div:first-child { display: flex; justify-content: space-between; gap: 8px; font-size: 9px; }
+.chat-video-job small { display: block; margin-top: 6px; color: var(--muted); font-size: 8px; line-height: 1.45; }
+.chat-video-job.done { border-color: #9dcabd; }
+.chat-video-job.failed { border-color: #e3afa6; background: #fff7f4; }
+.writer-composer { padding: 10px 12px 12px; display: grid; grid-template-columns: minmax(0, 1fr) 34px; align-items: end; gap: 8px; border-top: 1px solid var(--line); }
+.writer-composer textarea { width: 100%; height: 74px; resize: none; padding: 10px; border: 1px solid var(--line-strong); border-radius: 6px; outline: 0; background: white; font-size: 10px; line-height: 1.5; }
 .writer-composer textarea:focus { border-color: #72aaa0; }
-.send-button { position: absolute; right: 19px; bottom: 20px; width: 29px; height: 29px; display: grid; place-items: center; border: 0; border-radius: 5px; color: white; background: var(--teal); cursor: pointer; }
+.send-button { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 5px; color: white; background: var(--teal); cursor: pointer; }
 
 .prompt-workspace, .produce-workspace, .publish-workspace { display: grid; grid-template-columns: minmax(0,1fr) 350px; }
 .prompt-editor-panel, .production-preview, .publish-main, .runs-list-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: white; }
@@ -304,6 +332,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .run-state strong { color: var(--teal); font-size: 20px; }
 .run-state span { color: var(--muted); font-size: 9px; }
 .run-log { min-height: 240px; max-height: 50vh; overflow: auto; padding: 11px; color: #cbd6d1; background: #202523; border-radius: 6px; font-size: 8px; line-height: 1.5; white-space: pre-wrap; }
+.cancel-job { margin: 0 0 10px; color: #8d382d; border-color: #d9aaa2; }
 .error-box { margin: 12px 0; padding: 9px; color: #8d382d; background: var(--coral-soft); border: 1px solid #edc5bd; border-radius: 5px; font-size: 9px; }
 
 .modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgba(14,19,17,.55); }
@@ -338,10 +367,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .project-switcher { display: none; }
   .brand-lockup { min-width: 0; }
   .brand-lockup span { display: none; }
-  .app-body { display: block; padding-bottom: 58px; }
-  .nav-rail { position: fixed; left: 0; right: 0; bottom: 0; z-index: 80; height: 56px; display: flex; flex-direction: row; padding: 4px; border-top: 1px solid #39413e; }
-  .nav-items { display: grid; grid-template-columns: repeat(5, 1fr); flex: 1; }
-  .nav-items button { min-height: 46px; display: grid; place-items: center; align-content: center; gap: 2px; }
+  .app-body { display: block; padding-bottom: 64px; }
+  .nav-rail { position: fixed; left: 0; right: 0; bottom: 0; z-index: 80; width: 100%; height: 56px; display: flex; flex-direction: row; padding: 4px; border-top: 1px solid #39413e; isolation: isolate; }
+  .nav-items { position: relative; z-index: 1; width: 100%; height: 100%; display: grid; grid-template-columns: repeat(5, 1fr); flex: 1; }
+  .nav-items button { z-index: 1; min-height: 46px; display: grid; place-items: center; align-content: center; gap: 2px; }
   .nav-items button span { display: block; font-size: 8px; }
   .nav-items button.active::before { left: 25%; right: 25%; top: -4px; width: auto; height: 3px; }
   .new-story-nav { display: none; }
@@ -352,6 +381,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .story-workspace, .prompt-workspace, .produce-workspace, .publish-workspace, .runs-workspace { display: block; }
   .editor-surface { height: 720px; }
   .writer-panel { min-height: 560px; border-left: 0; border-top: 1px solid var(--line); }
+  .writer-composer { scroll-margin-bottom: 68px; }
   .prompt-editor-panel { height: 690px; }
   .prompt-inspector, .production-controls, .publish-controls, .run-detail-panel { border-left: 0; border-top: 1px solid var(--line); }
   .production-preview, .publish-main { min-height: 650px; }

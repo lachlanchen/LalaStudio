@@ -18,7 +18,7 @@ export function LibraryPanel({ stories, selectedId, query, onQuery, onSelect, on
   );
 
   return (
-    <aside className="library-panel" aria-label="Story library">
+    <aside className="library-panel" aria-label="Story library" data-testid="story-library">
       <div className="library-heading">
         <div>
           <span className="eyebrow">Library</span>
@@ -30,7 +30,7 @@ export function LibraryPanel({ stories, selectedId, query, onQuery, onSelect, on
       </div>
       <label className="search-field">
         <Search size={16} />
-        <input value={query} onChange={(event) => onQuery(event.target.value)} placeholder="Search stories" />
+        <input data-testid="story-search" value={query} onChange={(event) => onQuery(event.target.value)} placeholder="Search stories" />
       </label>
       <div className="library-count">
         <span>{filtered.length} documents</span>
@@ -42,6 +42,9 @@ export function LibraryPanel({ stories, selectedId, query, onQuery, onSelect, on
         {filtered.map((story) => (
           <button
             key={story.id}
+            data-testid="story-row"
+            data-story-id={story.id}
+            data-story-title={story.title}
             className={`story-row ${story.id === selectedId ? "selected" : ""}`}
             onClick={() => onSelect(story.id)}
           >

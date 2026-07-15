@@ -3,17 +3,21 @@ import {
   Bot,
   Check,
   ChevronDown,
+  Clapperboard,
   Eye,
   FileText,
   LoaderCircle,
   MessageSquareText,
+  MonitorPlay,
+  Play,
   Save,
   Send,
+  Settings2,
   Sparkles,
   WandSparkles
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import type { ModelProfile, StoryDocument, StudioJob } from "../types";
+import type { ChatMessage, ModelProfile, ProductionRequest, StoryDocument, StudioJob } from "../types";
 
 interface Props {
   story: StoryDocument | null;
@@ -22,11 +26,14 @@ interface Props {
   saving: boolean;
   models: ModelProfile[];
   activeAiJob: StudioJob | null;
-  aiResult: string;
+  activeVideoJob: StudioJob | null;
+  messages: ChatMessage[];
+  productionRequest: ProductionRequest | null;
   onContent: (content: string) => void;
   onSave: () => void;
   onAi: (action: "chat" | "draft" | "review" | "final", message: string, effort?: string) => void;
-  onApplyAi: () => void;
+  onApplyAi: (content: string) => void;
+  onProductionAction: (operation: "inspect" | "prepare" | "generate") => void;
 }
 
 export function StoryWorkspace({
@@ -36,11 +43,14 @@ export function StoryWorkspace({
   saving,
   models,
   activeAiJob,
-  aiResult,
+  activeVideoJob,
+  messages,
+  productionRequest,
   onContent,
   onSave,
   onAi,
-  onApplyAi
+  onApplyAi,
+  onProductionAction
 }: Props) {
   const [editorMode, setEditorMode] = useState<"write" | "preview">("write");
   const [message, setMessage] = useState("");
@@ -48,6 +58,7 @@ export function StoryWorkspace({
   const quality = story?.quality;
   const route = effort === "auto" ? models.find((model) => model.route === "chat") : null;
   const isRunning = activeAiJob?.status === "running" || activeAiJob?.status === "queued";
+  const videoRunning = activeVideoJob?.status === "running" || activeVideoJob?.status === "queued";
   const wordCount = useMemo(() => (content.match(/[\u3400-\u9fff]|[A-Za-z]+/g) || []).length, [content]);
 
   if (!story) {
@@ -66,13 +77,13 @@ export function StoryWorkspace({
   };
 
   return (
-    <main className="story-workspace">
+    <main className="story-workspace" data-testid="story-workspace">
       <section className="editor-surface">
         <div className="document-bar">
           <div className="document-title">
             <span className={`status-dot ${story.status}`} />
             <div>
-              <h1>{story.title}</h1>
+              <h1 data-testid="story-title">{story.title}</h1>
               <span>{story.storyPath}</span>
             </div>
           </div>
@@ -85,7 +96,7 @@ export function StoryWorkspace({
                 <Eye size={15} /> Preview
               </button>
             </div>
-            <button className="primary-button" disabled={!dirty || saving} onClick={onSave}>
+            <button className="primary-button" data-testid="story-save" disabled={!dirty || saving} onClick={onSave}>
               {saving ? <LoaderCircle className="spin" size={16} /> : dirty ? <Save size={16} /> : <Check size={16} />}
               {saving ? "Saving" : dirty ? "Save" : "Saved"}
             </button>
@@ -111,6 +122,7 @@ export function StoryWorkspace({
           {editorMode === "write" ? (
             <textarea
               className="story-editor"
+              data-testid="story-editor"
               value={content}
               onChange={(event) => onContent(event.target.value)}
               spellCheck
@@ -128,7 +140,7 @@ export function StoryWorkspace({
         </div>
       </section>
 
-      <aside className="writer-panel">
+      <aside className="writer-panel" data-testid="studio-chat">
         <div className="writer-heading">
           <div className="writer-icon"><Bot size={19} /></div>
           <div>
@@ -154,27 +166,43 @@ export function StoryWorkspace({
         </div>
 
         <div className="quick-actions">
-          <button onClick={() => send("review")} disabled={isRunning}>
+          <button data-testid="quick-review" onClick={() => send("review")} disabled={isRunning}>
             <MessageSquareText size={16} /> Critique exact lines
           </button>
-          <button onClick={() => send("final")} disabled={isRunning}>
+          <button data-testid="quick-final" onClick={() => send("final")} disabled={isRunning}>
             <WandSparkles size={16} /> Final quality pass
           </button>
-          <button onClick={() => send("draft")} disabled={isRunning}>
+          <button data-testid="quick-draft" onClick={() => send("draft")} disabled={isRunning}>
             <Sparkles size={16} /> Rewrite from note
           </button>
         </div>
 
-        <div className="writer-thread">
-          {!activeAiJob && !aiResult && (
+        <div className="writer-thread" data-testid="chat-thread">
+          {!activeAiJob && !activeVideoJob && !messages.length && !productionRequest && (
             <div className="writer-empty">
               <MessageSquareText size={22} />
               <strong>Ask about this story</strong>
               <p>Quick questions use low reasoning. Final and production work routes to ultra.</p>
             </div>
           )}
-          {activeAiJob && (
-            <div className={`job-message ${activeAiJob.status}`}>
+          {messages.map((item) => (
+            <article
+              key={item.id}
+              className={`chat-message ${item.role} ${item.kind || "text"}`}
+              data-testid={`chat-message-${item.role}`}
+              data-message-id={item.id}
+            >
+              <div className="chat-message-label">{item.role === "user" ? "You" : "Lala Studio"}</div>
+              {item.role === "assistant" ? <ReactMarkdown>{item.content}</ReactMarkdown> : <p>{item.content}</p>}
+              {item.role === "assistant" && item.applyable && (
+                <button className="text-button chat-apply" data-testid="apply-response" onClick={() => onApplyAi(item.content)}>
+                  <WandSparkles size={14} /> Use in editor
+                </button>
+              )}
+            </article>
+          ))}
+          {activeAiJob && isRunning && (
+            <div className={`job-message ${activeAiJob.status}`} data-testid="ai-job" data-status={activeAiJob.status}>
               <div>
                 {isRunning ? <LoaderCircle className="spin" size={16} /> : <Check size={16} />}
                 <strong>{activeAiJob.title}</strong>
@@ -183,18 +211,42 @@ export function StoryWorkspace({
               <small>{activeAiJob.message} · {activeAiJob.effort}</small>
             </div>
           )}
-          {aiResult && (
-            <div className="ai-result">
-              <ReactMarkdown>{aiResult}</ReactMarkdown>
-              <button className="secondary-button full" onClick={onApplyAi}>
-                <WandSparkles size={15} /> Replace editor with result
-              </button>
-            </div>
+          {productionRequest && productionRequest.storyId === story.id && (
+            <section className="production-chat-card" data-testid="production-card" data-request-id={productionRequest.id}>
+              <div className="production-card-heading">
+                <div className="production-card-icon"><Clapperboard size={18} /></div>
+                <div><span className="eyebrow">Visible production contract</span><strong>Ready for preflight</strong></div>
+              </div>
+              <p>{productionRequest.summary}</p>
+              <dl>
+                <div><dt>References</dt><dd>{productionRequest.settings.selectedAssetIds.join(", ")}</dd></div>
+                <div><dt>Paid action</dt><dd>Never automatic; one confirmation is required.</dd></div>
+              </dl>
+              {activeVideoJob && (
+                <div className={`chat-video-job ${activeVideoJob.status}`} data-testid="chat-video-job" data-status={activeVideoJob.status}>
+                  <div><strong>{activeVideoJob.title}</strong><span>{activeVideoJob.progress}%</span></div>
+                  <div className="progress-track"><span style={{ width: `${activeVideoJob.progress}%` }} /></div>
+                  <small>{activeVideoJob.error || activeVideoJob.message}</small>
+                </div>
+              )}
+              <div className="production-card-actions">
+                <button className="secondary-button" data-testid="production-inspect" disabled={videoRunning} onClick={() => onProductionAction("inspect")}>
+                  <Settings2 size={15} /> Inspect setup
+                </button>
+                <button className="secondary-button" data-testid="production-prepare" disabled={videoRunning} onClick={() => onProductionAction("prepare")}>
+                  <MonitorPlay size={15} /> Prepare only
+                </button>
+                <button className="primary-button danger-action" data-testid="production-generate" disabled={videoRunning} onClick={() => onProductionAction("generate")}>
+                  <Play size={15} /> Generate once
+                </button>
+              </div>
+            </section>
           )}
         </div>
 
         <div className="writer-composer">
           <textarea
+            data-testid="chat-input"
             value={message}
             onChange={(event) => setMessage(event.target.value)}
             placeholder="Describe a change, joke, or scene…"
@@ -202,7 +254,7 @@ export function StoryWorkspace({
               if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) send("chat");
             }}
           />
-          <button className="send-button" onClick={() => send("chat")} disabled={isRunning || !message.trim()} title="Send">
+          <button className="send-button" data-testid="chat-send" onClick={() => send("chat")} disabled={isRunning || !message.trim()} title="Send">
             <Send size={17} />
           </button>
         </div>

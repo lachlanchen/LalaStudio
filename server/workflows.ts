@@ -83,6 +83,8 @@ export function startVideoWorkflow(input: {
     const task = `
 Use the local lalachan-xyq-browser-video skill and the repository browser/CDP scripts.
 
+Work as one accountable executor. Do not spawn collaborators and do not use remote connector/app tools. Use the local shell, repository scripts, and the configured CDP endpoint directly. Inspect evidence after each browser step and adapt the next step to the current page state.
+
 Task: ${action}
 
 Contract:
@@ -97,6 +99,7 @@ Contract:
 - Confirm every attachment visibly. Do not paste paths into the composer.
 - Keep the same current thread when recovering from a transient page error.
 - Never click submit twice. If credits, login, CAPTCHA, or attachment proof blocks the task, stop with evidence.
+- When monitoring/downloading, pass the watcher --expected-duration ${input.settings.duration} and reject any unrelated media outside the normal five-second tolerance.
 - Save preflight and final screenshots under ${runDir}.
 
 Return a concise completion report with page/thread URL, visible settings, attachment count, screenshots, and downloaded MP4 path when applicable.
@@ -105,6 +108,7 @@ Return a concise completion report with page/thread URL, visible settings, attac
       profile,
       prompt: task,
       sandbox: "danger-full-access",
+      singleExecutor: true,
       signal,
       log
     });

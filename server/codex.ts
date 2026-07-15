@@ -8,17 +8,20 @@ export interface CodexRunOptions {
   profile: ModelProfile;
   prompt: string;
   sandbox?: "read-only" | "workspace-write" | "danger-full-access";
+  ignoreRepositoryRules?: boolean;
+  singleExecutor?: boolean;
   signal?: AbortSignal;
   log?: (line: string) => void;
 }
 
-export async function runCodex(options: CodexRunOptions): Promise<string> {
-  const outputDir = path.join(runtimeRoot, "codex-output");
-  fs.mkdirSync(outputDir, { recursive: true });
-  const outputPath = path.join(outputDir, `${Date.now()}-${Math.random().toString(16).slice(2)}.md`);
-  const args = [
+export function buildCodexArgs(options: Pick<CodexRunOptions, "profile" | "sandbox" | "ignoreRepositoryRules" | "singleExecutor">, outputPath: string): string[] {
+  return [
     "exec",
     "--ephemeral",
+    ...(options.ignoreRepositoryRules ? ["--ignore-rules"] : []),
+    ...(options.singleExecutor
+      ? ["--disable", "multi_agent", "--disable", "apps", "--disable", "enable_mcp_apps"]
+      : []),
     "-m",
     options.profile.model,
     "-c",
@@ -31,6 +34,13 @@ export async function runCodex(options: CodexRunOptions): Promise<string> {
     outputPath,
     "-"
   ];
+}
+
+export async function runCodex(options: CodexRunOptions): Promise<string> {
+  const outputDir = path.join(runtimeRoot, "codex-output");
+  fs.mkdirSync(outputDir, { recursive: true });
+  const outputPath = path.join(outputDir, `${Date.now()}-${Math.random().toString(16).slice(2)}.md`);
+  const args = buildCodexArgs(options, outputPath);
 
   const result = await new Promise<void>((resolve, reject) => {
     const child = spawn(studioConfig.codexCommand, args, {
@@ -81,6 +91,7 @@ export function buildAiPrompt(input: {
   const duration = input.duration || 15;
   const shared = `
 You are the LALACHAN story room co-writer. Write in natural, speakable Chinese.
+Everything required is included in this prompt. Do not browse, call tools, spawn agents, or read files; return the writing directly.
 
 Main cast voices:
 - 啦啦侠: warm, brave after a small misunderstanding, sometimes food-minded.
@@ -101,12 +112,12 @@ Story standard:
   }
 
   if (input.action === "draft") {
-    return `${shared}\n\nCreate a polished ${duration}-second story from this idea. Internally critique the first draft, then return only the improved story with a title and timed scene paragraphs.\n\nIdea:\n${input.message}`;
+    return `${shared}\n\nCreate a polished ${duration}-second story from this idea. Silently reread the first draft once, then return one complete save-ready Markdown document. Use this exact structure: # title; a line stating ${duration} 秒中文短片; ## 故事 with natural dialogue inside the story; ## 对应词卡 with English, Japanese, Furigana, and 中文 fields using a real theme word. Do not wrap the document in a code fence.\n\nIdea:\n${input.message}`;
   }
 
   if (input.action === "review") {
     return `${shared}\n\nCritique the exact weak lines in the draft. Return: Problems, concrete fixes, and a revised story. Focus on clarity, causality, natural dialogue, visual comedy, and shareability.\n\nDraft:\n${input.story || input.message}`;
   }
 
-  return `${shared}\n\nProduce the final publishable ${duration}-second story. Run an independent critic pass before answering. Return only: title, clean story, natural dialogue, and a one-line visual payoff. No analysis and no prompt-engineering notes.\n\nDraft and request:\n${input.story || ""}\n\n${input.message}`;
+  return `${shared}\n\nProduce the final publishable ${duration}-second story. Silently reread it once for clarity and natural speech before answering. Return one complete save-ready Markdown document, not commentary. Keep or repair this structure: # title; a line stating ${duration} 秒中文短片; ## 故事 with dialogue naturally embedded; ## 对应词卡 with English, Japanese, Furigana, and 中文 fields. Preserve an existing suitable word card, or choose one real theme word if it is absent. Do not wrap the document in a code fence and do not add analysis or prompt-engineering notes.\n\nDraft and request:\n${input.story || ""}\n\n${input.message}`;
 }

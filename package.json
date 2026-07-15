@@ -15,7 +15,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "cli": "tsx cli/index.ts"
+    "cli": "tsx cli/index.ts",
+    "desktop": "scripts/launch_studio_novnc.sh start",
+    "desktop:status": "scripts/launch_studio_novnc.sh status",
+    "browser": "node tools/lala-studio-browser.mjs"
   },
   "dependencies": {
     "commander": "^14.0.0",

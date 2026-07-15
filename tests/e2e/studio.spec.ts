@@ -11,6 +11,16 @@ test("opens the writing workspace without overlap", async ({ page }, testInfo) =
   });
 });
 
+test("turns a visible chat request into a production contract", async ({ page }) => {
+  await page.goto("/");
+  await page.getByTestId("chat-input").fill("请把当前故事生成15秒、4:3的视频，使用最便宜的 Mini 体验版");
+  await page.getByTestId("chat-send").click();
+  await expect(page.getByTestId("chat-message-user").last()).toContainText("生成15秒");
+  await expect(page.getByTestId("production-card")).toBeVisible();
+  await expect(page.getByTestId("production-card")).toContainText("15s · 4:3");
+  await expect(page.getByTestId("production-generate")).toBeVisible();
+});
+
 test("opens production controls", async ({ page }, testInfo) => {
   await page.goto("/");
   await page.locator('.nav-items button[title="Produce"]').click();

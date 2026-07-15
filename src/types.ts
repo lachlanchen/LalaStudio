@@ -1,5 +1,22 @@
 export type WorkspaceView = "write" | "prompt" | "produce" | "publish" | "runs";
 
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+  kind?: "text" | "production" | "error";
+  applyable?: boolean;
+}
+
+export interface ProductionRequest {
+  id: string;
+  storyId: string;
+  sourceMessage: string;
+  settings: VideoSettings;
+  summary: string;
+}
+
 export interface StorySummary {
   id: string;
   title: string;

@@ -25,6 +25,7 @@ Lala Studio combines a Markdown story room, natural-language critique, stable pr
 
 - Writes and edits Markdown stories with deterministic checks for dialogue, causality, character identity, natural wording, duration, and payoff.
 - Routes Codex `gpt-5.6-sol` by task: low effort for chat, high for drafting, xhigh for critique, and ultra for final writing and production.
+- Keeps a visible co-writer conversation where a video request becomes an inspectable production contract instead of an immediate paid action.
 - Builds path-free Xiaoyunque prompts with exact attachment numbering and fresh English/Japanese/furigana/Chinese word cards.
 - Prepares the browser composer without spending credits, and requires explicit confirmation before one paid generation submit.
 - Packages generated media through LazyEdit with story context, portrait blur fill, multilingual subtitles, a top-right logo, and platform queues.
@@ -64,6 +65,18 @@ node bin/lala-studio.js video generate STORY_ID --confirm-paid
 ```
 
 `prepare` never submits. `generate` is rejected without `--confirm-paid`. Publishing without `--confirm` creates a local LazyEdit preview.
+
+## Visible noVNC Control
+
+Run Lala Studio in its own observable Chrome profile without sharing the Xiaoyunque, JLCEDA, or AgenticApp browser:
+
+```bash
+scripts/launch_studio_novnc.sh start --project-root "$LALA_STUDIO_PROJECT_ROOT"
+node tools/lala-studio-browser.mjs status
+node tools/lala-studio-browser.mjs chat --action final --message "Polish the current story"
+```
+
+The controller manipulates the visible webapp through Playwright/CDP and saves evidence under `.runtime/browser-evidence/`. See [Isolated noVNC Browser Control](docs/novnc-browser-control.md) for the full chat-to-video workflow and paid-action rules.
 
 ## Validate
 

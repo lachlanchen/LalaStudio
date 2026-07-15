@@ -45,7 +45,7 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
   };
 
   return (
-    <main className="produce-workspace">
+    <main className="produce-workspace" data-testid="produce-workspace">
       <section className="production-preview">
         <div className="workspace-heading">
           <div>
@@ -53,12 +53,12 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
             <h1>{story.title}</h1>
             <p>Prepare without cost, then submit once after visible preflight.</p>
           </div>
-          <button className="secondary-button" onClick={onOpenBrowser}>
+          <button className="secondary-button" data-testid="open-xyq-browser" onClick={onOpenBrowser}>
             <ExternalLink size={16} /> Open browser
           </button>
         </div>
 
-        <div className="scene-stage" data-ratio={settings.ratio.replace(":", "-")}>
+        <div className="scene-stage" data-testid="scene-stage" data-ratio={settings.ratio.replace(":", "-")}>
           <div className="stage-backdrop" />
           <div className="character-line">
             {selectedAssets
@@ -79,7 +79,7 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
         </div>
 
         {activeJob ? (
-          <div className={`production-job ${activeJob.status}`}>
+          <div className={`production-job ${activeJob.status}`} data-testid="production-job" data-status={activeJob.status}>
             <div className="job-title-line">
               {busy ? <LoaderCircle className="spin" size={18} /> : <CheckCircle2 size={18} />}
               <div><strong>{activeJob.title}</strong><span>{activeJob.message}</span></div>
@@ -100,12 +100,12 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
         <div className="control-heading"><Settings2 size={18} /><div><span className="eyebrow">Preflight</span><h2>Video settings</h2></div></div>
         <label className="field-label">Creation mode</label>
         <div className="segmented full">
-          <button className={settings.mode === "short" ? "active" : ""} onClick={() => onSettings({ ...settings, mode: "short" })}>Short film</button>
-          <button className={settings.mode === "agent" ? "active" : ""} onClick={() => onSettings({ ...settings, mode: "agent" })}>Agent</button>
+          <button data-testid="mode-short" className={settings.mode === "short" ? "active" : ""} onClick={() => onSettings({ ...settings, mode: "short" })}>Short film</button>
+          <button data-testid="mode-agent" className={settings.mode === "agent" ? "active" : ""} onClick={() => onSettings({ ...settings, mode: "agent" })}>Agent</button>
         </div>
 
         <label className="field-label" htmlFor="video-model">Video model</label>
-        <select id="video-model" className="select-field" value={settings.model} onChange={(event) => onSettings({ ...settings, model: event.target.value })}>
+        <select id="video-model" data-testid="video-model" className="select-field" value={settings.model} onChange={(event) => onSettings({ ...settings, model: event.target.value })}>
           {models.map((model) => <option key={model}>{model}</option>)}
         </select>
         <div className="cost-note"><span /> Mini 体验版 is the default lowest-credit route.</div>
@@ -113,6 +113,7 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
         <label className="field-label">Duration <b>{settings.duration}s</b></label>
         <input
           className="range-field"
+          data-testid="video-duration"
           type="range"
           min="10"
           max={settings.mode === "short" ? 30 : 90}
@@ -124,7 +125,7 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
         <label className="field-label">Aspect ratio</label>
         <div className="segmented full">
           {(["4:3", "9:16", "16:9"] as const).map((ratio) => (
-            <button key={ratio} className={settings.ratio === ratio ? "active" : ""} onClick={() => onSettings({ ...settings, ratio })}>{ratio}</button>
+            <button key={ratio} data-testid={`ratio-${ratio.replace(":", "-")}`} className={settings.ratio === ratio ? "active" : ""} onClick={() => onSettings({ ...settings, ratio })}>{ratio}</button>
           ))}
         </div>
 
@@ -134,7 +135,7 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
           {assets.map((asset) => {
             const selected = settings.selectedAssetIds.includes(asset.id);
             return (
-              <button key={asset.id} className={selected ? "selected" : ""} onClick={() => toggleAsset(asset)} title={asset.role}>
+              <button key={asset.id} data-testid="asset-toggle" data-asset-id={asset.id} data-selected={selected ? "true" : "false"} className={selected ? "selected" : ""} onClick={() => toggleAsset(asset)} title={asset.role}>
                 <img src={asset.mediaUrl} alt="" />
                 <span>{asset.label}</span>
                 <i>{asset.required ? "Required" : selected ? "On" : "Off"}</i>
@@ -153,13 +154,13 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
         )}
 
         <div className="control-actions">
-          <button className="secondary-button full" onClick={onBuildPrompt} disabled={busy}>
+          <button className="secondary-button full" data-testid="rebuild-prompt" onClick={onBuildPrompt} disabled={busy}>
             <UploadCloud size={16} /> Rebuild prompt
           </button>
-          <button className="secondary-button full" onClick={() => onRun("prepare")} disabled={busy || !prompt || issues.length > 0}>
+          <button className="secondary-button full" data-testid="prepare-video" onClick={() => onRun("prepare")} disabled={busy || !prompt || issues.length > 0}>
             <MonitorPlay size={16} /> Prepare, no submit
           </button>
-          <button className="primary-button full danger-action" onClick={() => onRun("generate")} disabled={busy || !prompt || issues.length > 0}>
+          <button className="primary-button full danger-action" data-testid="generate-video" onClick={() => onRun("generate")} disabled={busy || !prompt || issues.length > 0}>
             <Play size={16} /> Generate once
           </button>
         </div>

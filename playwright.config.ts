@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+const baseURL = process.env.LALA_STUDIO_E2E_URL || "http://127.0.0.1:4312";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -11,13 +12,13 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 12_000 },
   use: {
-    baseURL: "http://127.0.0.1:4312",
+    baseURL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure"
   },
   webServer: {
     command: "npm run start",
-    url: "http://127.0.0.1:4312/api/health",
+    url: `${baseURL}/api/health`,
     reuseExistingServer: true,
     timeout: 30_000,
     env: {
@@ -31,7 +32,7 @@ export default defineConfig({
     },
     {
       name: "mobile",
-      use: { ...devices["Pixel 7"], channel: "chrome" }
+      use: { ...devices["Desktop Chrome"], channel: "chrome", viewport: { width: 390, height: 844 } }
     }
   ]
 });

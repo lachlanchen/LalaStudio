@@ -12,6 +12,7 @@ async function request<T>(route: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   bootstrap: () => request<BootstrapData>("/api/bootstrap"),
+  status: () => request<BootstrapData["status"]>("/api/status"),
   story: (id: string) => request<StoryDocument>(`/api/stories/${encodeURIComponent(id)}`),
   saveStory: (id: string, content: string) =>
     request<StoryDocument>(`/api/stories/${encodeURIComponent(id)}`, {
@@ -57,5 +58,6 @@ export const api = {
   }) => request<StudioJob>("/api/publish/jobs", { method: "POST", body: JSON.stringify(input) }),
   jobs: () => request<{ jobs: StudioJob[] }>("/api/jobs"),
   job: (id: string) => request<StudioJob>(`/api/jobs/${encodeURIComponent(id)}`),
+  cancelJob: (id: string) => request<StudioJob>(`/api/jobs/${encodeURIComponent(id)}/cancel`, { method: "POST", body: "{}" }),
   openBrowser: () => request<{ started: boolean; detail: string }>("/api/browser/open", { method: "POST", body: "{}" })
 };

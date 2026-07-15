@@ -142,6 +142,7 @@ export function createApp() {
         profile,
         prompt: buildAiPrompt(input),
         sandbox: "read-only",
+        ignoreRepositoryRules: true,
         signal,
         log
       });
