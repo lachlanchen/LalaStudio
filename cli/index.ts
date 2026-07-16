@@ -87,7 +87,7 @@ story
   });
 
 const ai = program.command("ai").description("Run GPT-5.6-Sol story tasks");
-for (const action of ["chat", "draft", "review", "final"] as const) {
+for (const action of ["chat", "draft", "review", "final", "refine"] as const) {
   ai.command(`${action} <message>`)
     .option("--story <file>", "Story Markdown file")
     .option("--story-id <id>", "Load a story from the Studio library")

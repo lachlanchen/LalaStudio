@@ -127,8 +127,26 @@ async function selectStory(page, match) {
   return { storyId, title: await page.getByTestId("story-title").innerText() };
 }
 
+async function createStory(page, title, duration) {
+  if (![15, 30, 60].includes(duration)) throw new Error("Story duration must be 15, 30, or 60 seconds");
+  await ensureView(page, "write");
+  await page.getByTestId("new-story-open").click();
+  await page.getByTestId("new-story-dialog").waitFor({ state: "visible", timeout: 20_000 });
+  await page.getByTestId("new-story-title-input").fill(title);
+  await page.getByTestId(`new-story-duration-${duration}`).click();
+  await page.getByTestId("new-story-create").click();
+  await page.getByTestId("new-story-dialog").waitFor({ state: "hidden", timeout: 30_000 });
+  await page.waitForFunction((expected) => document.querySelector('[data-testid="story-title"]')?.textContent?.trim() === expected, title, { timeout: 30_000 });
+  const selected = page.locator('[data-testid="story-row"].selected');
+  return {
+    storyId: await selected.getAttribute("data-story-id"),
+    title: await page.getByTestId("story-title").innerText(),
+    duration
+  };
+}
+
 async function sendChat(page, message, action = "chat") {
-  if (!["chat", "draft", "review", "final"].includes(action)) throw new Error(`Unsupported chat action: ${action}`);
+  if (!["chat", "draft", "review", "final", "refine"].includes(action)) throw new Error(`Unsupported chat action: ${action}`);
   await ensureView(page, "write");
   const previousAssistantCount = await page.getByTestId("chat-message-assistant").count();
   const productionCards = page.getByTestId("production-card");
@@ -269,8 +287,10 @@ function usage() {
     `  screenshot [--label NAME]\n` +
     `  reload\n` +
     `  navigate --view write|prompt|produce|publish|runs\n` +
+    `  create-story --title TEXT [--duration 15|30|60]\n` +
     `  select-story --match TEXT\n` +
-    `  chat --message TEXT [--action chat|draft|review|final] [--wait-seconds N]\n` +
+    `  chat --message TEXT [--action chat|draft|review|final|refine] [--wait-seconds N]\n` +
+    `  story-pipeline --title TEXT --message TEXT [--duration 15|30|60]\n` +
     `  apply-last\n` +
     `  save\n` +
     `  cancel-active\n` +
@@ -304,8 +324,16 @@ try {
     await ensureView(page, required(options, "view"));
     result = await readStatus(page);
   }
+  else if (command === "create-story") result = await createStory(page, required(options, "title"), numeric(options, "duration", 15));
   else if (command === "select-story") result = await selectStory(page, required(options, "match"));
   else if (command === "chat") result = await sendChat(page, required(options, "message"), String(options.action || "chat"));
+  else if (command === "story-pipeline") {
+    const created = await createStory(page, required(options, "title"), numeric(options, "duration", 15));
+    const refined = await sendChat(page, required(options, "message"), "refine");
+    await applyLast(page);
+    await saveStory(page);
+    result = { created, refined, saved: true };
+  }
   else if (command === "apply-last") {
     await applyLast(page);
     result = { applied: true };

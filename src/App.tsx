@@ -28,6 +28,7 @@ import type {
   ModelProfile,
   ProductionRequest,
   ServiceStatus,
+  StoryAiAction,
   StoryDocument,
   StorySummary,
   StudioJob,
@@ -88,7 +89,7 @@ function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
   const [fatalError, setFatalError] = useState<string | null>(null);
-  const aiJobContext = useRef(new Map<string, { storyId: string; action: "chat" | "draft" | "review" | "final" }>());
+  const aiJobContext = useRef(new Map<string, { storyId: string; action: StoryAiAction }>());
   const deliveredAiJobs = useRef(new Set<string>());
   const refreshedPublishJobs = useRef(new Set<string>());
 
@@ -197,11 +198,23 @@ function App() {
     const storyId = context?.storyId || story?.id;
     if (!storyId) return;
     if (activeAiJob.status === "done" && activeAiJob.result?.content) {
+      if (context?.action === "refine" && activeAiJob.result.report) {
+        const quality = activeAiJob.result.quality as { score?: number } | undefined;
+        const accepted = activeAiJob.result.accepted !== false;
+        appendChat(storyId, {
+          role: "assistant",
+          content: `${String(activeAiJob.result.report)}\n\n**Quality gate:** ${accepted ? `accepted${quality?.score ? ` · ${quality.score}/100` : ""}` : "not accepted"}`,
+          kind: "critique"
+        });
+      }
+      const accepted = context?.action !== "refine" || activeAiJob.result.accepted !== false;
       appendChat(storyId, {
         role: "assistant",
-        content: String(activeAiJob.result.content),
-        kind: "text",
-        applyable: context?.action === "draft" || context?.action === "final"
+        content: accepted
+          ? String(activeAiJob.result.content)
+          : `The quality gate did not accept this candidate. Review the critic notes before retrying.\n\n${String(activeAiJob.result.content)}`,
+        kind: accepted ? "text" : "error",
+        applyable: accepted && (context?.action === "draft" || context?.action === "final" || context?.action === "refine")
       });
       return;
     }
@@ -266,7 +279,7 @@ function App() {
     }
   };
 
-  const runAi = async (action: "chat" | "draft" | "review" | "final", message: string, effort?: string) => {
+  const runAi = async (action: StoryAiAction, message: string, effort?: string) => {
     if (!story || !videoSettings) return;
     if (action === "chat" && isPublishMessage(message)) {
       const expected = story.videoPath?.split("/").pop() || null;
@@ -487,7 +500,7 @@ function App() {
               </button>
             ))}
           </div>
-          <button className="new-story-nav" onClick={() => setNewStoryOpen(true)}><Plus size={18} /><span>New story</span></button>
+          <button className="new-story-nav" data-testid="new-story-open" onClick={() => setNewStoryOpen(true)}><Plus size={18} /><span>New story</span></button>
         </nav>
 
         {view !== "runs" && <LibraryPanel stories={stories} selectedId={story?.id || null} query={query} onQuery={setQuery} onSelect={selectStory} onCreate={() => setNewStoryOpen(true)} />}
@@ -496,14 +509,14 @@ function App() {
 
       {newStoryOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setNewStoryOpen(false)}>
-          <section className="dialog" role="dialog" aria-modal="true" aria-labelledby="new-story-title" onMouseDown={(event) => event.stopPropagation()}>
+          <section className="dialog" data-testid="new-story-dialog" role="dialog" aria-modal="true" aria-labelledby="new-story-title" onMouseDown={(event) => event.stopPropagation()}>
             <div className="dialog-heading"><div><span className="eyebrow">New document</span><h2 id="new-story-title">Start a story</h2></div><button className="icon-button" onClick={() => setNewStoryOpen(false)}><X size={18} /></button></div>
-            <label className="field-label">Working title<input autoFocus className="text-field" value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="e.g. 雨夜里的纸飞机" /></label>
+            <label className="field-label">Working title<input autoFocus className="text-field" data-testid="new-story-title-input" value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="e.g. 雨夜里的纸飞机" /></label>
             <label className="field-label">Target duration</label>
             <div className="segmented full">
-              {[15, 30, 60].map((duration) => <button key={duration} className={newDuration === duration ? "active" : ""} onClick={() => setNewDuration(duration)}>{duration}s</button>)}
+              {[15, 30, 60].map((duration) => <button key={duration} data-testid={`new-story-duration-${duration}`} className={newDuration === duration ? "active" : ""} onClick={() => setNewDuration(duration)}>{duration}s</button>)}
             </div>
-            <div className="dialog-actions"><button className="secondary-button" onClick={() => setNewStoryOpen(false)}>Cancel</button><button className="primary-button" onClick={createStory} disabled={!newTitle.trim()}><Plus size={16} /> Create</button></div>
+            <div className="dialog-actions"><button className="secondary-button" onClick={() => setNewStoryOpen(false)}>Cancel</button><button className="primary-button" data-testid="new-story-create" onClick={createStory} disabled={!newTitle.trim()}><Plus size={16} /> Create</button></div>
           </section>
         </div>
       )}

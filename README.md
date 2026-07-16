@@ -24,6 +24,7 @@ Lala Studio combines a Markdown story room, natural-language critique, stable pr
 ## What It Does
 
 - Writes and edits Markdown stories with deterministic checks for dialogue, causality, character identity, natural wording, duration, and payoff.
+- Runs a bounded draft → independent critic → final writer pipeline, with one deterministic repair retry and explicit human apply.
 - Routes Codex `gpt-5.6-sol` by task: low effort for chat, high for drafting, xhigh for critique, and ultra for final writing and production.
 - Keeps a visible co-writer conversation where a video request becomes an inspectable production contract instead of an immediate paid action.
 - Builds path-free Xiaoyunque prompts with exact attachment numbering, then uses Codex image generation and the supplied card reference to make and verify each fresh English/Japanese/furigana/Chinese word card before upload.
@@ -59,6 +60,7 @@ When installed directly under a project that contains `references/` and `scripts
 ```bash
 node bin/lala-studio.js status
 node bin/lala-studio.js story list
+node bin/lala-studio.js ai refine "Turn this idea into a polished story" --story-id STORY_ID
 node bin/lala-studio.js ai final "Polish and validate this story" --story-id STORY_ID
 node bin/lala-studio.js prompt-build STORY_ID
 node bin/lala-studio.js video prepare STORY_ID
@@ -74,13 +76,14 @@ Run Lala Studio in its own observable Chrome profile without sharing the Xiaoyun
 ```bash
 scripts/launch_studio_novnc.sh start --project-root "$LALA_STUDIO_PROJECT_ROOT"
 node tools/lala-studio-browser.mjs status
+node tools/lala-studio-browser.mjs story-pipeline --title "Story title" --duration 15 --message "Story idea"
 node tools/lala-studio-browser.mjs chat --action final --message "Polish the current story"
 node tools/lala-studio-browser.mjs delivery \
   --message "Download the current result and publish it to all platforms" \
   --operation inspect
 ```
 
-The controller manipulates the visible webapp through Playwright/CDP and saves evidence under `.runtime/browser-evidence/`. Studio itself ensures the separate Xiaoyunque desktop at noVNC port `6099`; the Studio desktop remains on `6116`. See [Isolated noVNC Browser Control](docs/novnc-browser-control.md) for the full chat-to-video and delivery workflows.
+The controller manipulates the visible webapp through Playwright/CDP and saves evidence under `.runtime/browser-evidence/`. Studio itself ensures the separate Xiaoyunque desktop at noVNC port `6099`; the Studio desktop remains on `6116`. See [Story Refinement Pipeline](docs/story-refinement-pipeline.md) and [Isolated noVNC Browser Control](docs/novnc-browser-control.md) for the writing, chat-to-video, and delivery contracts.
 
 ## Validate
 

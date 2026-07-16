@@ -89,6 +89,7 @@ export function buildAiPrompt(input: {
   duration?: number;
 }): string {
   const duration = input.duration || 15;
+  const dialogueLimit = duration <= 15 ? 4 : duration <= 30 ? 7 : 12;
   const shared = `
 You are the LALACHAN story room co-writer. Write in natural, speakable Chinese.
 Everything required is included in this prompt. Do not browse, call tools, spawn agents, or read files; return the writing directly.
@@ -101,6 +102,7 @@ Main cast voices:
 
 Story standard:
 - ${duration}s needs one clear cause-and-effect chain and a visible payoff.
+- Use no more than ${dialogueLimit} short dialogue beats; leave room for visible action and reaction.
 - Dialogue must sound like friends talking, not slogans, reports, translations, or morals.
 - Keep production constraints outside the story.
 - Avoid using 突然 to connect unrelated events.
@@ -112,12 +114,12 @@ Story standard:
   }
 
   if (input.action === "draft") {
-    return `${shared}\n\nCreate a polished ${duration}-second story from this idea. Silently reread the first draft once, then return one complete save-ready Markdown document. Use this exact structure: # title; a line stating ${duration} 秒中文短片; ## 故事 with natural dialogue inside the story; ## 对应词卡 with English, Japanese, Furigana, and 中文 fields using a real theme word. Do not wrap the document in a code fence.\n\nIdea:\n${input.message}`;
+    return `${shared}\n\nCreate a polished ${duration}-second story from this idea. Silently reread the first draft once, then return one complete save-ready Markdown document. Use this exact structure: # title; a line stating ${duration} 秒中文短片; ## 故事 with natural dialogue inside the story; ## 对应词卡 with English, Japanese, Furigana, and 中文 fields using a real theme word. The word card is required document metadata outside the story, not dialogue or prompt leakage. Do not wrap the document in a code fence.\n\nIdea:\n${input.message}`;
   }
 
   if (input.action === "review") {
     return `${shared}\n\nCritique the exact weak lines in the draft. Return: Problems, concrete fixes, and a revised story. Focus on clarity, causality, natural dialogue, visual comedy, and shareability.\n\nDraft:\n${input.story || input.message}`;
   }
 
-  return `${shared}\n\nProduce the final publishable ${duration}-second story. Silently reread it once for clarity and natural speech before answering. Return one complete save-ready Markdown document, not commentary. Keep or repair this structure: # title; a line stating ${duration} 秒中文短片; ## 故事 with dialogue naturally embedded; ## 对应词卡 with English, Japanese, Furigana, and 中文 fields. Preserve an existing suitable word card, or choose one real theme word if it is absent. Do not wrap the document in a code fence and do not add analysis or prompt-engineering notes.\n\nDraft and request:\n${input.story || ""}\n\n${input.message}`;
+  return `${shared}\n\nProduce the final publishable ${duration}-second story. Silently reread it once for clarity and natural speech before answering. Return one complete save-ready Markdown document, not commentary. Keep or repair this structure: # title; a line stating ${duration} 秒中文短片; ## 故事 with dialogue naturally embedded; ## 对应词卡 with English, Japanese, Furigana, and 中文 fields. The word card is required document metadata outside the story, not dialogue or prompt leakage. Preserve an existing suitable word card, or choose one real theme word if it is absent. Do not wrap the document in a code fence and do not add analysis or prompt-engineering notes.\n\nDraft and request:\n${input.story || ""}\n\n${input.message}`;
 }

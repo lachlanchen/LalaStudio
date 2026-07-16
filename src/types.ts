@@ -1,11 +1,12 @@
 export type WorkspaceView = "write" | "prompt" | "produce" | "publish" | "runs";
+export type StoryAiAction = "chat" | "draft" | "review" | "final" | "refine";
 
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   createdAt: string;
-  kind?: "text" | "production" | "error";
+  kind?: "text" | "critique" | "production" | "error";
   applyable?: boolean;
 }
 

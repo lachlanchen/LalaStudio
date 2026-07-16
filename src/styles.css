@@ -154,7 +154,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #38a581; }
 .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
 .quick-actions button { min-height: 34px; display: flex; align-items: center; gap: 7px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 5px; background: white; color: #48534e; cursor: pointer; font-size: 9px; text-align: left; }
-.quick-actions button:first-child { grid-column: 1 / -1; }
+.quick-actions .pipeline-action { grid-column: 1 / -1; min-height: 43px; color: #145f57; border-color: #8fc0b6; background: #edf7f4; }
+.pipeline-action > span { min-width: 0; display: grid; gap: 2px; }
+.pipeline-action strong { font-size: 10px; }
+.pipeline-action small { color: #65746e; font-size: 8px; }
 .quick-actions button:hover { border-color: #86b8ae; color: var(--teal); }
 .writer-thread { min-height: 0; display: flex; flex-direction: column; gap: 9px; overflow: auto; padding: 12px; scroll-behavior: smooth; }
 .writer-empty { min-height: 170px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #75807b; text-align: center; }
@@ -164,6 +167,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .chat-message { width: 92%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 6px; background: white; color: #39423f; font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
 .chat-message.user { align-self: flex-end; color: white; border-color: #176d65; background: #176d65; }
 .chat-message.assistant { align-self: flex-start; }
+.chat-message.critique { color: #544921; border-color: #dfcf9e; background: #fffaf0; }
 .chat-message.error { color: #823c33; border-color: #e6beb6; background: #fff4f1; }
 .chat-message p { margin: 4px 0; }
 .chat-message h1, .chat-message h2 { margin: 7px 0 4px; font-size: 12px; }
@@ -359,7 +363,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .nav-items button span, .new-story-nav span { display: none; }
   .story-workspace, .prompt-workspace, .produce-workspace, .publish-workspace { grid-template-columns: minmax(400px,1fr) 310px; }
   .quick-actions { grid-template-columns: 1fr; }
-  .quick-actions button:first-child { grid-column: auto; }
+  .quick-actions .pipeline-action { grid-column: auto; }
   .service-statuses span { font-size: 0; }
   .service-statuses span i { margin: 0 4px; }
 }

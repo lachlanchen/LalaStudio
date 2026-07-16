@@ -42,6 +42,10 @@ The launcher builds stale frontend assets, starts the app, creates the isolated 
 
 ```bash
 node tools/lala-studio-browser.mjs status
+node tools/lala-studio-browser.mjs story-pipeline \
+  --title "阿芽酱的寿司" \
+  --duration 15 \
+  --message "阿芽酱做寿司，朋友们各帮一个具体的忙。"
 node tools/lala-studio-browser.mjs select-story --match "千岛湖"
 node tools/lala-studio-browser.mjs chat \
   --action final \

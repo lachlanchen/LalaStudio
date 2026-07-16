@@ -18,6 +18,7 @@ import {
 import { JobStore } from "./job-store.js";
 import { buildVideoPrompt, validateVideoPrompt } from "./prompt-builder.js";
 import { StoryRepository } from "./story-repository.js";
+import { runStoryRefinementPipeline } from "./story-refinement.js";
 import type { ModelRoute, ReasoningEffort, VideoSettings } from "./types.js";
 import { assertInside, safeId } from "./lib/files.js";
 import {
@@ -39,7 +40,7 @@ const asyncRoute =
   };
 
 const aiSchema = z.object({
-  action: z.enum(["chat", "draft", "review", "final"]),
+  action: z.enum(["chat", "draft", "review", "final", "refine"]),
   message: z.string().min(1).max(16000),
   story: z.string().max(30000).optional(),
   duration: z.number().int().min(5).max(180).optional(),
@@ -133,19 +134,56 @@ export function createApp() {
       chat: "chat",
       draft: "draft",
       review: "review",
-      final: "final"
+      final: "final",
+      refine: "final"
     };
-    const profile = resolveModelProfile(routeMap[input.action], {
-      effort: input.effort as ReasoningEffort | undefined
-    });
-    const job = jobs.create({ type: "ai", title: `${profile.label}: ${input.message.slice(0, 54)}`, profile });
+    const profile = input.action === "refine"
+      ? modelProfiles.final
+      : resolveModelProfile(routeMap[input.action], {
+          effort: input.effort as ReasoningEffort | undefined
+        });
+    const title = input.action === "refine" ? "Story refinement pipeline" : profile.label;
+    const job = jobs.create({ type: "ai", title: `${title}: ${input.message.slice(0, 54)}`, profile });
     jobs.run(job, async ({ log, progress, signal }) => {
+      if (input.action === "refine") {
+        return runStoryRefinementPipeline(
+          {
+            message: input.message,
+            story: input.story,
+            duration: input.duration || 15
+          },
+          {
+            profiles: {
+              draft: modelProfiles.draft,
+              review: modelProfiles.review,
+              final: modelProfiles.final
+            },
+            progress,
+            run: (stage, stageProfile, prompt) => runCodex({
+              profile: stageProfile,
+              prompt,
+              sandbox: "read-only",
+              ignoreRepositoryRules: true,
+              singleExecutor: true,
+              signal,
+              log: (line) => log(`[${stage}] ${line}`)
+            })
+          }
+        );
+      }
+      const standardAction = input.action;
       progress(12, `Running ${profile.model} at ${profile.effort}`);
       const output = await runCodex({
         profile,
-        prompt: buildAiPrompt(input),
+        prompt: buildAiPrompt({
+          action: standardAction,
+          message: input.message,
+          story: input.story,
+          duration: input.duration
+        }),
         sandbox: "read-only",
         ignoreRepositoryRules: true,
+        singleExecutor: true,
         signal,
         log
       });

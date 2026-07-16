@@ -1,4 +1,4 @@
-import type { BootstrapData, StoryDocument, StudioJob, VideoSettings } from "./types";
+import type { BootstrapData, StoryAiAction, StoryDocument, StudioJob, VideoSettings } from "./types";
 
 async function request<T>(route: string, options?: RequestInit): Promise<T> {
   const response = await fetch(route, {
@@ -25,7 +25,7 @@ export const api = {
       body: JSON.stringify({ title, duration })
     }),
   aiJob: (input: {
-    action: "chat" | "draft" | "review" | "final";
+    action: StoryAiAction;
     message: string;
     story?: string;
     duration?: number;

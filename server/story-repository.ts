@@ -64,13 +64,19 @@ export function analyzeStory(content: string, duration = inferDuration(content) 
   const reportTerms = content.match(/结论[:：]|系统提示|版本可能|真正的意义|本质上|执行方案/g) || [];
   const characterCount = ["啦啦侠", "阿芽酱", "飒飒君", "庄子"].filter((name) => content.includes(name)).length;
   const chineseLength = (content.match(/[\u3400-\u9fff]/g) || []).length;
-  const upperBound = duration <= 15 ? 430 : duration <= 30 ? 850 : 1500;
+  const dialogueUpperBound = duration <= 15 ? 4 : duration <= 30 ? 7 : 12;
+  const upperBound = duration <= 15 ? 260 : duration <= 30 ? 520 : 1100;
+  const dialogueStatus = dialogueCount < 2 || dialogueCount > dialogueUpperBound ? "warn" : "pass";
   const checks: StoryQuality["checks"] = [
     {
       id: "dialogue",
       label: "Speakable dialogue",
-      status: dialogueCount >= 2 ? "pass" : "warn",
-      detail: dialogueCount >= 2 ? `${dialogueCount} dialogue beats` : "Add two short lines that sound natural aloud"
+      status: dialogueStatus,
+      detail: dialogueCount < 2
+        ? "Add two short lines that sound natural aloud"
+        : dialogueCount > dialogueUpperBound
+          ? `${dialogueCount} dialogue beats exceed the ${dialogueUpperBound}-beat limit for about ${duration}s`
+          : `${dialogueCount} dialogue beats`
     },
     {
       id: "causality",

@@ -8,6 +8,7 @@ import {
   Eye,
   FileText,
   LoaderCircle,
+  ListChecks,
   MessageSquareText,
   MonitorPlay,
   Play,
@@ -19,7 +20,15 @@ import {
   WandSparkles
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import type { ChatMessage, DeliveryRequest, ModelProfile, ProductionRequest, StoryDocument, StudioJob } from "../types";
+import type {
+  ChatMessage,
+  DeliveryRequest,
+  ModelProfile,
+  ProductionRequest,
+  StoryAiAction,
+  StoryDocument,
+  StudioJob
+} from "../types";
 
 interface Props {
   story: StoryDocument | null;
@@ -35,7 +44,7 @@ interface Props {
   deliveryRequest: DeliveryRequest | null;
   onContent: (content: string) => void;
   onSave: () => void;
-  onAi: (action: "chat" | "draft" | "review" | "final", message: string, effort?: string) => void;
+  onAi: (action: StoryAiAction, message: string, effort?: string) => void;
   onApplyAi: (content: string) => void;
   onProductionAction: (operation: "inspect" | "prepare" | "generate") => void;
   onDeliveryAction: (operation: "inspect" | "publish") => void;
@@ -74,9 +83,11 @@ export function StoryWorkspace({
     return <main className="blank-workspace">Select a story or create a new one.</main>;
   }
 
-  const send = (action: "chat" | "draft" | "review" | "final") => {
+  const send = (action: StoryAiAction) => {
     const fallback =
-      action === "review"
+      action === "refine"
+        ? "把当前想法经过起草、独立批评和最终润色，整理成一篇自然、有趣、可直接保存的故事。"
+        : action === "review"
         ? "检查这篇故事的问题并改得更自然。"
         : action === "final"
           ? "完成最终润色，保留故事核心。"
@@ -171,10 +182,14 @@ export function StoryWorkspace({
 
         <div className="route-note">
           <span className="live-dot" />
-          {effort === "auto" ? `${route?.effort || "low"} for chat; ultra for final` : `${effort} override`}
+          {effort === "auto" ? `${route?.effort || "low"} chat · high → x-high → ultra pipeline` : `${effort} override`}
         </div>
 
         <div className="quick-actions">
+          <button className="pipeline-action" data-testid="quick-refine" onClick={() => send("refine")} disabled={isRunning}>
+            <ListChecks size={16} />
+            <span><strong>Refine to final</strong><small>Draft → critic → quality gate</small></span>
+          </button>
           <button data-testid="quick-review" onClick={() => send("review")} disabled={isRunning}>
             <MessageSquareText size={16} /> Critique exact lines
           </button>
