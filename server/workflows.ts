@@ -68,7 +68,21 @@ export function ensureXyqBrowserVisible(): { started: boolean; detail: string; n
 
 export const launchXyqBrowser = ensureXyqBrowserVisible;
 
-function probeVideo(filePath: string, expectedDuration?: number): { duration: number; width: number; height: number; size: number; hasAudio: true } | null {
+function fullyDecodes(filePath: string): boolean {
+  const result = spawnSync("ffmpeg", [
+    "-nostdin",
+    "-v", "error",
+    "-xerror",
+    "-i", filePath,
+    "-map", "0:v:0",
+    "-map", "0:a:0?",
+    "-f", "null",
+    "-"
+  ], { encoding: "utf8", timeout: 600_000 });
+  return result.status === 0 && !(result.stderr || "").trim();
+}
+
+export function probeVideo(filePath: string, expectedDuration?: number): { duration: number; width: number; height: number; size: number; hasAudio: true } | null {
   if (!fs.existsSync(filePath) || fs.statSync(filePath).size < 1024) return null;
   const result = spawnSync("ffprobe", [
     "-v", "error",
@@ -88,6 +102,7 @@ function probeVideo(filePath: string, expectedDuration?: number): { duration: nu
     const hasAudio = parsed.streams?.some((stream) => stream.codec_type === "audio") || false;
     if (!duration || !video?.width || !video.height || !hasAudio) return null;
     if (expectedDuration && Math.abs(duration - expectedDuration) > 5) return null;
+    if (!fullyDecodes(filePath)) return null;
     return { duration, width: video.width, height: video.height, size: Number(parsed.format?.size || fs.statSync(filePath).size), hasAudio: true };
   } catch {
     return null;
@@ -144,6 +159,7 @@ Production contract:
 - Never click submit twice. If credits, login, CAPTCHA, word-card generation, noVNC visibility, or attachment proof blocks the task, stop with evidence.
 - Before submitting, check whether this exact story result is already downloaded in Videos/. If a valid matching MP4 exists, do not spend credits again; report and reuse it.
 - When monitoring/downloading, pass the watcher --expected-duration ${input.settings.duration} and reject any unrelated media outside the normal five-second tolerance.
+- A matching ffprobe header is not sufficient: decode the complete video and audio streams with ffmpeg before accepting or copying a result.
 - Save preflight and final screenshots under ${input.runDir}.
 
 Return a concise completion report with noVNC URL, page/thread URL, visible settings, attachment count, generated word-card path when applicable, screenshots, and downloaded MP4 path when applicable.
@@ -362,7 +378,7 @@ Download-only task:
 - First check whether a matching valid MP4 already exists at ${targetPath}. If it does, verify and reuse it.
 - Otherwise download the already-completed result that matches this story, verify the browser result identity, and save/copy it exactly to ${targetPath}.
 - Expected duration: ${expected || "use the story/result duration"} seconds, with the normal five-second tolerance.
-- Verify duration, dimensions, audio stream, file size, and final path with ffprobe. Save a result screenshot under ${runDir}.
+- Verify duration, dimensions, audio stream, file size, and final path. Decode the complete video and audio streams with ffmpeg; do not accept a header-only ffprobe match. Save a result screenshot under ${runDir}.
 - If the completed result cannot be proven, stop with evidence instead of downloading unrelated media.
 
 Return the exact verified MP4 path and probe evidence.
