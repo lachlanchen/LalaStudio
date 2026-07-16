@@ -91,6 +91,7 @@ function App() {
   const [fatalError, setFatalError] = useState<string | null>(null);
   const aiJobContext = useRef(new Map<string, { storyId: string; action: StoryAiAction }>());
   const deliveredAiJobs = useRef(new Set<string>());
+  const refreshedVideoJobs = useRef(new Set<string>());
   const refreshedPublishJobs = useRef(new Set<string>());
 
   const notify = (message: string) => {
@@ -174,6 +175,27 @@ function App() {
   const activeAiJob = jobs.find((job) => job.id === activeAiJobId) || null;
   const activeVideoJob = jobs.find((job) => job.id === activeVideoJobId) || null;
   const activePublishJob = jobs.find((job) => job.id === activePublishJobId) || null;
+
+  useEffect(() => {
+    if (!activeVideoJob || !["done", "failed", "cancelled"].includes(activeVideoJob.status)) return;
+    if (refreshedVideoJobs.current.has(activeVideoJob.id)) return;
+    refreshedVideoJobs.current.add(activeVideoJob.id);
+    const storyId = productionRequest?.storyId || story?.id;
+    void Promise.all([
+      api.videos(),
+      storyId ? api.story(storyId).catch(() => null) : Promise.resolve(null)
+    ]).then(([{ videos: next }, refreshedStory]) => {
+      setVideos(next);
+      if (!storyId) return;
+      if (refreshedStory) {
+        setStory((current) => current?.id === refreshedStory.id ? refreshedStory : current);
+        setStories((current) => current.map((item) => item.id === refreshedStory.id ? refreshedStory : item));
+      }
+      const expected = refreshedStory?.videoPath?.split("/").pop() || `${storyId}.mp4`;
+      const match = next.find((video) => video.id === expected || video.name === expected);
+      if (match) setSelectedVideo(match.id);
+    }).catch(() => undefined);
+  }, [activeVideoJob, productionRequest?.storyId, story?.id]);
 
   useEffect(() => {
     if (!activePublishJob || !["done", "failed", "cancelled"].includes(activePublishJob.status)) return;

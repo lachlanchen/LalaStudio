@@ -27,7 +27,7 @@ Lala Studio combines a Markdown story room, natural-language critique, stable pr
 - Runs a bounded draft → independent critic → final writer pipeline, with one deterministic repair retry and explicit human apply.
 - Routes Codex `gpt-5.6-sol` by task: low effort for chat, high for drafting, xhigh for critique, and ultra for final writing and production.
 - Keeps a visible co-writer conversation where a video request becomes an inspectable production contract instead of an immediate paid action.
-- Builds path-free Xiaoyunque prompts with exact attachment numbering, then uses Codex image generation and the supplied card reference to make and verify each fresh English/Japanese/furigana/Chinese word card before upload.
+- Builds path-free Xiaoyunque prompts with exact attachment numbering, then uses Codex image generation and the supplied card reference to make and verify each fresh unlabeled multilingual word card before upload.
 - Prepares the browser composer without spending credits, and requires explicit confirmation before one paid generation submit.
 - Opens the logged-in Xiaoyunque profile inside a second observable noVNC desktop before every browser production run.
 - Recognizes publish commands in Studio chat, verifies or downloads the matching result, then packages it through LazyEdit with story context, portrait blur fill, multilingual subtitles, a top-right logo, and platform queues.

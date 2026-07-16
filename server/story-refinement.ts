@@ -75,6 +75,7 @@ First compare the draft with the original request: the requested protagonist,
 main activity, setting, relationship, and tone must remain explicit in the story.
 The "## 对应词卡" section is required document metadata outside "## 故事";
 do not call it prompt leakage or ask the writer to remove it.
+Check that every word-card entry is correctly written and expresses the same concept; do not privilege one language over another.
 
 Return only these sections:
 ## Requirement coverage

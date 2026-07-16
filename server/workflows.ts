@@ -127,7 +127,14 @@ export function buildVideoExecutorTask(input: {
     index === cardIndex && input.settings.preGenerateWordCard ? generatedCardPath : assetPath
   );
   const wordCardStage = cardIndex >= 0 && input.settings.preGenerateWordCard
-    ? `Before opening the Xiaoyunque upload menu, use Codex image generation with the source reference ${input.assetPaths[cardIndex]} to create ${generatedCardPath}. Match the reference card's physical product design and layout. Render this exact content clearly and only once: English: ${input.settings.wordCard.english}; Japanese: ${input.settings.wordCard.japanese}; Furigana: ${input.settings.wordCard.furigana}; 中文: ${input.settings.wordCard.chinese}. Inspect the generated PNG for readable, correct text. If Codex image generation or visual verification fails, stop before any paid action. Upload the generated PNG as attachment ${cardIndex + 1} instead of the base reference.`
+    ? `Before opening the Xiaoyunque upload menu, use Codex image generation with the source reference ${input.assetPaths[cardIndex]} to create ${generatedCardPath}. Match the reference card's physical product design and layout. First verify that all four values below express the same intended word and are correctly written in their respective language or script. The card face must contain only this four-line block, clearly and once:
+
+${input.settings.wordCard.english}
+${input.settings.wordCard.japanese}
+${input.settings.wordCard.furigana}
+${input.settings.wordCard.chinese}
+
+Do not render language names, field labels, colons, bullets, or numbering. Inspect the generated PNG and compare every rendered line character-by-character with the requested block. If any language is inaccurate, unreadable, missing, duplicated, or labeled, regenerate before any paid action. Upload the verified generated PNG as attachment ${cardIndex + 1} instead of the base reference.`
     : "No Codex word-card pre-generation is required for this run.";
 
   return `

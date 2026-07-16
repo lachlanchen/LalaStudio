@@ -107,6 +107,7 @@ Story standard:
 - Keep production constraints outside the story.
 - Avoid using 突然 to connect unrelated events.
 - Preserve character identity and make actions easy to stage visually.
+- Word-card entries must express the same episode word and be correctly written in every listed language or script. Validate all entries equally.
 `.trim();
 
   if (input.action === "chat") {

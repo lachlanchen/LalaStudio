@@ -23,7 +23,9 @@ describe("visible Xiaoyunque production contract", () => {
     expect(task).toContain("noVNC desktop");
     expect(task).toContain("Codex image generation");
     expect(task).toContain("generated-word-card.png");
-    expect(task).toContain("English: glide");
+    expect(task).toContain("glide\n滑る\nすべる\n滑行");
+    expect(task).toContain("Do not render language names, field labels, colons, bullets, or numbering");
+    expect(task).not.toContain("English: glide");
     expect(task).toContain("check whether this exact story result is already downloaded");
   });
 });

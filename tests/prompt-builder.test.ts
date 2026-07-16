@@ -28,8 +28,10 @@ describe("Xiaoyunque prompt builder", () => {
     expect(prompt).toContain("图1：Words card");
     expect(prompt).toContain("庄子机器人严格参考图2");
     expect(prompt).toContain("阿芽酱严格参考图6");
-    expect(prompt).toContain("English: together");
-    expect(prompt).toContain("Japanese: 一緒");
+    expect(prompt).toContain("together\n一緒\nいっしょ\n一起");
+    expect(prompt).toContain("不要在卡片上添加语言名称、字段标签、冒号、项目符号或编号");
+    expect(prompt).not.toContain("English: together");
+    expect(prompt).not.toContain("Japanese: 一緒");
     expect(prompt).toContain("不要字幕");
     expect(prompt).not.toContain("Trio group");
     expect(prompt).not.toContain("English: Rain");

@@ -33,7 +33,7 @@ export function buildVideoPrompt(input: {
   ].filter(Boolean);
 
   const wordCard = labels.has("word-card")
-    ? `\n场景里的${labels.get("word-card")}是实体学习卡风格参考。本集卡片显示：English: ${input.settings.wordCard.english}；Japanese: ${input.settings.wordCard.japanese}；Furigana: ${input.settings.wordCard.furigana}；中文：${input.settings.wordCard.chinese}。卡片只是场景中的真实道具，不是字幕。`
+    ? `\n场景里的${labels.get("word-card")}是已经制作好的实体学习卡。本集卡片只显示下面四行正文：\n${input.settings.wordCard.english}\n${input.settings.wordCard.japanese}\n${input.settings.wordCard.furigana}\n${input.settings.wordCard.chinese}\n不要在卡片上添加语言名称、字段标签、冒号、项目符号或编号。保持上传图片中的文字准确清楚。卡片只是场景中的真实道具，不是字幕。`
     : "";
 
   return `# 小云雀生成提示词
