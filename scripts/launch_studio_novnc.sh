@@ -75,7 +75,7 @@ LOG_DIR="$STATE_DIR/logs"
 mkdir -p "$LOG_DIR"
 APP_URL="http://127.0.0.1:$APP_PORT"
 CDP_URL="http://127.0.0.1:$CDP_PORT"
-NOVNC_URL="http://127.0.0.1:$NOVNC_PORT/vnc_lite.html?host=127.0.0.1&port=$NOVNC_PORT&autoconnect=1&resize=remote"
+NOVNC_URL="http://127.0.0.1:$NOVNC_PORT/vnc_lite.html?host=127.0.0.1&port=$NOVNC_PORT&autoconnect=1&scale=1"
 
 need() {
   command -v "$1" >/dev/null 2>&1 || { echo "Missing required command: $1" >&2; exit 3; }
@@ -145,7 +145,7 @@ fi
 if ! curl -fsS "$APP_URL/api/health" >/dev/null 2>&1; then
   env LALA_STUDIO_PROJECT_ROOT="$PROJECT_ROOT" LALA_STUDIO_PORT="$APP_PORT" \
     LALA_STUDIO_XYQ_CDP_URL="http://127.0.0.1:$XYQ_CDP_PORT" \
-    LALA_STUDIO_XYQ_NOVNC_URL="http://127.0.0.1:$XYQ_NOVNC_PORT/vnc_lite.html?host=127.0.0.1&port=$XYQ_NOVNC_PORT&autoconnect=1&resize=remote" \
+    LALA_STUDIO_XYQ_NOVNC_URL="http://127.0.0.1:$XYQ_NOVNC_PORT/vnc_lite.html?host=127.0.0.1&port=$XYQ_NOVNC_PORT&autoconnect=1&scale=1" \
     setsid npm --prefix "$STUDIO_ROOT" run start >"$LOG_DIR/studio.log" 2>&1 < /dev/null &
   echo "$!" >"$STATE_DIR/studio.pid"
   for _ in {1..120}; do curl -fsS "$APP_URL/api/health" >/dev/null 2>&1 && break; sleep .25; done

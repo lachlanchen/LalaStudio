@@ -9,7 +9,7 @@ Lala Studio includes a dedicated virtual desktop and a Playwright controller for
 | Lala Studio | `http://127.0.0.1:4412` |
 | X display | `:96` |
 | x11vnc | `127.0.0.1:5916` |
-| noVNC | `http://127.0.0.1:6116/vnc_lite.html?host=127.0.0.1&port=6116&autoconnect=1&resize=remote` |
+| noVNC | `http://127.0.0.1:6116/vnc_lite.html?host=127.0.0.1&port=6116&autoconnect=1&scale=1` |
 | Chrome CDP | `http://127.0.0.1:9466` |
 | Chrome profile | `${XDG_CACHE_HOME:-$HOME/.cache}/lala-studio-browser` |
 
@@ -21,7 +21,7 @@ Xiaoyunque uses a separate observable desktop and the existing logged-in profile
 | --- | --- |
 | X display | `:98` |
 | x11vnc | `127.0.0.1:5908` |
-| noVNC | `http://127.0.0.1:6099/vnc_lite.html?host=127.0.0.1&port=6099&autoconnect=1&resize=remote` |
+| noVNC | `http://127.0.0.1:6099/vnc_lite.html?host=127.0.0.1&port=6099&autoconnect=1&scale=1` |
 | Chrome CDP | `http://127.0.0.1:9344` |
 | Chrome profile | `${XDG_CACHE_HOME:-$HOME/.cache}/xyq-chrome` |
 

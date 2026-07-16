@@ -90,7 +90,7 @@ export const studioConfig = {
   noVncUrl:
     process.env.LALA_STUDIO_XYQ_NOVNC_URL ||
     process.env.XYQ_NOVNC_URL ||
-    "http://127.0.0.1:6099/vnc_lite.html?host=127.0.0.1&port=6099&autoconnect=1&resize=remote",
+    "http://127.0.0.1:6099/vnc_lite.html?host=127.0.0.1&port=6099&autoconnect=1&scale=1",
   lazyEditRoot:
     process.env.LAZYEDIT_ROOT || path.join(os.homedir(), "DiskMech", "Projects", "lazyedit"),
   lazyEditApi: process.env.LAZYEDIT_API || "http://127.0.0.1:18787",

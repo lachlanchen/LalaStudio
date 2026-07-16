@@ -12,7 +12,7 @@ STATE_DIR="${XYQ_NOVNC_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/lala-studio-
 URL="${XYQ_URL:-https://xyq.jianying.com/home?tab_name=integrated-agent}"
 NOVNC_WEB="${NOVNC_WEB_ROOT:-/usr/share/novnc}"
 CDP_URL="http://127.0.0.1:$CDP_PORT"
-NOVNC_URL="http://127.0.0.1:$NOVNC_PORT/vnc_lite.html?host=127.0.0.1&port=$NOVNC_PORT&autoconnect=1&resize=remote"
+NOVNC_URL="http://127.0.0.1:$NOVNC_PORT/vnc_lite.html?host=127.0.0.1&port=$NOVNC_PORT&autoconnect=1&scale=1"
 
 mkdir -p "$STATE_DIR" "$STATE_DIR/logs" "$PROFILE_DIR"
 
