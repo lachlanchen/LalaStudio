@@ -47,15 +47,28 @@ function findRelatedFile(root: string, id: string, extension: string): string | 
   return files[0] ? path.join(root, files[0]) : null;
 }
 
+export function storyVideoMatchScore(id: string, name: string): number {
+  if (!name.toLowerCase().endsWith(".mp4")) return -1;
+  const storyId = id.toLowerCase();
+  const stem = path.basename(name, path.extname(name)).toLowerCase();
+  if (stem === storyId) return 0;
+  if (stem.startsWith(`${storyId}-`) || stem.startsWith(`${storyId}_`)) return 1;
+
+  const normalizedStoryId = storyId
+    .replace(/^\d{4}-\d{2}-\d{2}-/, "")
+    .replace(/[-_\s]+/g, "_");
+  const normalizedStem = stem.replace(/[-_\s]+/g, "_");
+  return normalizedStoryId && normalizedStem.includes(normalizedStoryId) ? 2 : -1;
+}
+
 function findVideo(id: string): string | null {
   if (!fs.existsSync(videosRoot)) return null;
-  const normalized = id.replace(/^\d{4}-\d{2}-\d{2}-/, "").replace(/-/g, "_");
   const candidates = fs
     .readdirSync(videosRoot)
-    .filter((name) => name.toLowerCase().endsWith(".mp4"))
-    .filter((name) => name.toLowerCase().includes(normalized.toLowerCase()))
-    .sort();
-  return candidates[0] ? path.join(videosRoot, candidates[0]) : null;
+    .map((name) => ({ name, score: storyVideoMatchScore(id, name) }))
+    .filter((candidate) => candidate.score >= 0)
+    .sort((a, b) => a.score - b.score || a.name.length - b.name.length || a.name.localeCompare(b.name));
+  return candidates[0] ? path.join(videosRoot, candidates[0].name) : null;
 }
 
 export function analyzeStory(content: string, duration = inferDuration(content) || 15): StoryQuality {
