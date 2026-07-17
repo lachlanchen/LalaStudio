@@ -16,6 +16,22 @@ describe("co-writer prompt contract", () => {
     expect(prompt).toContain("15 秒中文短片");
   });
 
+  it("uses the latest assistant version for conversational follow-up edits", () => {
+    const prompt = buildAiPrompt({
+      action: "final",
+      message: "Keep the previous version, but make the tree much higher.",
+      duration: 15,
+      story: "# Older editor draft\n\n## 故事\n\nThe robot grows biological bumps.",
+      history: [
+        { role: "assistant", content: "# Latest version\n\n## 故事\n\nThe robot has harmless marks on its shell." }
+      ]
+    });
+    expect(prompt).toContain("# Latest version");
+    expect(prompt).toMatch(/latest\s+relevant Lala Studio answer/);
+    expect(prompt).toContain("Do not silently revert to an older version");
+    expect(prompt).toContain("make the tree much higher");
+  });
+
   it("keeps production workflows in one accountable executor", () => {
     const args = buildCodexArgs(
       {

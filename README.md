@@ -25,6 +25,7 @@ Lala Studio combines a Markdown story room, natural-language critique, stable pr
 
 - Writes and edits Markdown stories with deterministic checks for dialogue, causality, character identity, natural wording, duration, and payoff.
 - Runs a bounded draft → independent critic → final writer pipeline, with one deterministic repair retry and explicit human apply.
+- Treats the writer panel as a real conversation: it sends a bounded recent history with the current editor draft, gives the latest relevant reply precedence for follow-up edits, and auto-routes plain-language requests to chat, critique, full drafting, or save-ready revision.
 - Routes Codex `gpt-5.6-sol` by task: low effort for chat, high for drafting, xhigh for critique, and ultra for final writing and production.
 - Keeps a visible co-writer conversation where a video request becomes an inspectable production contract instead of an immediate paid action.
 - Builds path-free Xiaoyunque prompts with exact attachment numbering, then uses Codex image generation and the supplied card reference to make and verify each fresh unlabeled multilingual word card before upload.

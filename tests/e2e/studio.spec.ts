@@ -6,6 +6,7 @@ test("opens the writing workspace without overlap", async ({ page }, testInfo) =
   await expect(page.locator('.nav-items button[title="Write"]')).toBeVisible();
   await expect(page.locator("main")).toBeVisible();
   await expect(page.getByTestId("quick-refine")).toContainText("Refine to final");
+  await expect(page.getByTestId("studio-chat")).toHaveAttribute("data-context-turns");
   await page.screenshot({
     path: `.playwright/${testInfo.project.name}-write.png`,
     fullPage: true

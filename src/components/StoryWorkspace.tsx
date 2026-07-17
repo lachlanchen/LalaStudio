@@ -20,6 +20,7 @@ import {
   WandSparkles
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { buildConversationHistory } from "../story-chat";
 import type {
   ChatMessage,
   DeliveryRequest,
@@ -78,6 +79,7 @@ export function StoryWorkspace({
   const videoRunning = activeVideoJob?.status === "running" || activeVideoJob?.status === "queued";
   const publishRunning = activePublishJob?.status === "running" || activePublishJob?.status === "queued";
   const wordCount = useMemo(() => (content.match(/[\u3400-\u9fff]|[A-Za-z]+/g) || []).length, [content]);
+  const contextTurns = useMemo(() => buildConversationHistory(messages).length, [messages]);
 
   if (!story) {
     return <main className="blank-workspace">Select a story or create a new one.</main>;
@@ -160,7 +162,7 @@ export function StoryWorkspace({
         </div>
       </section>
 
-      <aside className="writer-panel" data-testid="studio-chat">
+      <aside className="writer-panel" data-testid="studio-chat" data-context-turns={contextTurns}>
         <div className="writer-heading">
           <div className="writer-icon"><Bot size={19} /></div>
           <div>
@@ -180,7 +182,7 @@ export function StoryWorkspace({
           </label>
         </div>
 
-        <div className="route-note">
+        <div className="route-note" title="Uses the current editor and recent conversation when interpreting follow-up requests">
           <span className="live-dot" />
           {effort === "auto" ? `${route?.effort || "low"} chat · high → x-high → ultra pipeline` : `${effort} override`}
         </div>
@@ -220,7 +222,7 @@ export function StoryWorkspace({
               {item.role === "assistant" ? <ReactMarkdown>{item.content}</ReactMarkdown> : <p>{item.content}</p>}
               {item.role === "assistant" && item.applyable && (
                 <button className="text-button chat-apply" data-testid="apply-response" onClick={() => onApplyAi(item.content)}>
-                  <WandSparkles size={14} /> Use in editor
+                  <WandSparkles size={14} /> Use this version
                 </button>
               )}
             </article>
@@ -301,7 +303,7 @@ export function StoryWorkspace({
             data-testid="chat-input"
             value={message}
             onChange={(event) => setMessage(event.target.value)}
-            placeholder="Describe a change, joke, or scene…"
+            placeholder="Ask a question or describe a story change…"
             onKeyDown={(event) => {
               if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) send("chat");
             }}

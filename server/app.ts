@@ -44,7 +44,11 @@ const aiSchema = z.object({
   message: z.string().min(1).max(16000),
   story: z.string().max(30000).optional(),
   duration: z.number().int().min(5).max(180).optional(),
-  effort: z.enum(["low", "medium", "high", "xhigh", "max", "ultra"]).optional()
+  effort: z.enum(["low", "medium", "high", "xhigh", "max", "ultra"]).optional(),
+  history: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string().min(1).max(20_000)
+  })).max(10).optional()
 });
 
 const wordCardSchema = z.object({
@@ -150,7 +154,8 @@ export function createApp() {
           {
             message: input.message,
             story: input.story,
-            duration: input.duration || 15
+            duration: input.duration || 15,
+            history: input.history
           },
           {
             profiles: {
@@ -179,7 +184,8 @@ export function createApp() {
           action: standardAction,
           message: input.message,
           story: input.story,
-          duration: input.duration
+          duration: input.duration,
+          history: input.history
         }),
         sandbox: "read-only",
         ignoreRepositoryRules: true,

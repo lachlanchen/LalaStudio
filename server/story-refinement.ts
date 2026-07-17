@@ -1,4 +1,4 @@
-import { buildAiPrompt } from "./codex.js";
+import { buildAiPrompt, type AiConversationTurn } from "./codex.js";
 import { analyzeStory, extractWordCard } from "./story-repository.js";
 import type { ModelProfile, StoryQuality } from "./types.js";
 
@@ -8,6 +8,7 @@ export interface StoryRefinementInput {
   message: string;
   story?: string;
   duration: number;
+  history?: AiConversationTurn[];
 }
 
 export interface StoryRefinementResult {
@@ -121,7 +122,7 @@ export async function runStoryRefinementPipeline(
   const draft = cleanDocument(await dependencies.run(
     "draft",
     dependencies.profiles.draft,
-    buildAiPrompt({ action: "draft", message: draftMessage, duration: input.duration })
+    buildAiPrompt({ action: "draft", message: draftMessage, duration: input.duration, history: input.history })
   ));
   stages.push({ name: "draft", model: dependencies.profiles.draft.model, effort: dependencies.profiles.draft.effort });
 

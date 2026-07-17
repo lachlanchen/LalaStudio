@@ -1,4 +1,4 @@
-import type { BootstrapData, StoryAiAction, StoryDocument, StudioJob, VideoSettings } from "./types";
+import type { AiConversationTurn, BootstrapData, StoryAiAction, StoryDocument, StudioJob, VideoSettings } from "./types";
 
 async function request<T>(route: string, options?: RequestInit): Promise<T> {
   const response = await fetch(route, {
@@ -30,6 +30,7 @@ export const api = {
     story?: string;
     duration?: number;
     effort?: string;
+    history?: AiConversationTurn[];
   }) =>
     request<StudioJob>("/api/ai/jobs", {
       method: "POST",

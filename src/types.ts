@@ -1,6 +1,11 @@
 export type WorkspaceView = "write" | "prompt" | "produce" | "publish" | "runs";
 export type StoryAiAction = "chat" | "draft" | "review" | "final" | "refine";
 
+export interface AiConversationTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";

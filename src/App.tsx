@@ -19,6 +19,7 @@ import { PromptWorkspace } from "./components/PromptWorkspace";
 import { PublishWorkspace } from "./components/PublishWorkspace";
 import { RunsWorkspace } from "./components/RunsWorkspace";
 import { StoryWorkspace } from "./components/StoryWorkspace";
+import { buildConversationHistory, inferStoryAiAction } from "./story-chat";
 import { isProductionMessage, isPublishMessage, planDeliveryRequest, planProductionRequest } from "./video-chat";
 import type {
   AssetDefinition,
@@ -301,9 +302,9 @@ function App() {
     }
   };
 
-  const runAi = async (action: StoryAiAction, message: string, effort?: string) => {
+  const runAi = async (requestedAction: StoryAiAction, message: string, effort?: string) => {
     if (!story || !videoSettings) return;
-    if (action === "chat" && isPublishMessage(message)) {
+    if (requestedAction === "chat" && isPublishMessage(message)) {
       const expected = story.videoPath?.split("/").pop() || null;
       const existing = expected ? videos.find((video) => video.id === expected || video.name === expected) : null;
       const request = planDeliveryRequest({
@@ -327,7 +328,7 @@ function App() {
       });
       return;
     }
-    if (action === "chat" && isProductionMessage(message)) {
+    if (requestedAction === "chat" && isProductionMessage(message)) {
       const request = planProductionRequest({
         storyId: story.id,
         message,
@@ -345,9 +346,11 @@ function App() {
       });
       return;
     }
+    const action = requestedAction === "chat" ? inferStoryAiAction(message) : requestedAction;
+    const history = buildConversationHistory(chatByStory[story.id] || []);
     appendChat(story.id, { role: "user", content: message, kind: "text" });
     try {
-      const job = await api.aiJob({ action, message, story: content, duration: story?.duration || 15, effort });
+      const job = await api.aiJob({ action, message, story: content, duration: story?.duration || 15, effort, history });
       setJobs((current) => [job, ...current]);
       setActiveAiJobId(job.id);
       aiJobContext.current.set(job.id, { storyId: story.id, action });

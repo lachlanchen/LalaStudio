@@ -81,6 +81,7 @@ async function readStatus(page) {
     quality: document.querySelector(".quality-score")?.getAttribute("data-score") || null,
     userMessages: document.querySelectorAll('[data-testid="chat-message-user"]').length,
     assistantMessages: document.querySelectorAll('[data-testid="chat-message-assistant"]').length,
+    contextTurns: Number(document.querySelector('[data-testid="studio-chat"]')?.getAttribute("data-context-turns") || 0),
     productionCard: Boolean(document.querySelector('[data-testid="production-card"]')),
     deliveryCard: Boolean(document.querySelector('[data-testid="delivery-card"]')),
     aiJob: document.querySelector('[data-testid="ai-job"]')?.getAttribute("data-status") || null,
