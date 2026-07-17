@@ -429,6 +429,7 @@ export function listVideos() {
         name,
         path: filePath,
         relativePath: path.relative(repoRoot, filePath).split(path.sep).join("/"),
+        mediaUrl: `/media/videos/${encodeURIComponent(name)}`,
         size: stat.size,
         updatedAt: stat.mtime.toISOString()
       };

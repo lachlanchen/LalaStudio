@@ -20,7 +20,15 @@ describe("Studio API", () => {
     expect(response.body.defaults.video.selectedAssetIds).not.toContain("trio");
     expect(response.body.status.noVncUrl).toContain("scale=1");
     expect(response.body.status.noVncUrl).not.toContain("resize=remote");
+    for (const video of response.body.videos) {
+      expect(video.mediaUrl).toBe(`/media/videos/${encodeURIComponent(video.name)}`);
+    }
   }, 15_000);
+
+  it("rejects invalid or missing video media paths", async () => {
+    await request(app).get("/media/videos/not-a-video.txt").expect(404);
+    await request(app).get("/media/videos/missing-preview.mp4").expect(404);
+  });
 
   it("blocks unconfirmed paid generation before a workflow starts", async () => {
     const bootstrap = await request(app).get("/api/bootstrap").expect(200);

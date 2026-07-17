@@ -14,6 +14,7 @@ interface Props {
   onPlatforms: (platforms: string[]) => void;
   onCategory: (category: "lalachan" | "lalamv") => void;
   onRun: (publish: boolean) => void;
+  onPreview: (video: VideoItem) => void;
 }
 
 const platformOptions = [
@@ -23,7 +24,7 @@ const platformOptions = [
   ["douyin", "Douyin"]
 ] as const;
 
-export function PublishWorkspace({ story, videos, selectedVideo, title, platforms, category, activeJob, onVideo, onTitle, onPlatforms, onCategory, onRun }: Props) {
+export function PublishWorkspace({ story, videos, selectedVideo, title, platforms, category, activeJob, onVideo, onTitle, onPlatforms, onCategory, onRun, onPreview }: Props) {
   const selected = videos.find((video) => video.id === selectedVideo);
   const busy = activeJob?.status === "running" || activeJob?.status === "queued";
   if (!story) return <main className="blank-workspace">Select the matching story before publishing.</main>;
@@ -106,6 +107,9 @@ export function PublishWorkspace({ story, videos, selectedVideo, title, platform
           <div><span>Subtitle source</span><strong>Polished ASR + story</strong></div>
         </div>
 
+        <button className="secondary-button full" data-testid="publish-video-preview" disabled={!selected || busy} onClick={() => selected && onPreview(selected)}>
+          <Film size={16} /> Preview selected video
+        </button>
         <button className="secondary-button full" disabled={!selected || busy} onClick={() => onRun(false)}>
           <ShieldCheck size={16} /> Build and inspect preview
         </button>

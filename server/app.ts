@@ -131,6 +131,17 @@ export function createApp() {
   });
 
   app.get("/api/videos", (_req, res) => res.json({ videos: listVideos() }));
+  app.get("/media/videos/:id", (req, res) => {
+    const id = req.params.id;
+    if (id !== path.basename(id) || !id.toLowerCase().endsWith(".mp4")) {
+      return res.status(404).json({ error: "Video not found" });
+    }
+    const filePath = assertInside(videosRoot, path.join(videosRoot, id));
+    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+      return res.status(404).json({ error: "Video not found" });
+    }
+    res.sendFile(filePath);
+  });
 
   app.post("/api/ai/jobs", (req, res) => {
     const input = aiSchema.parse(req.body);

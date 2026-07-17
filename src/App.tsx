@@ -19,6 +19,7 @@ import { PromptWorkspace } from "./components/PromptWorkspace";
 import { PublishWorkspace } from "./components/PublishWorkspace";
 import { RunsWorkspace } from "./components/RunsWorkspace";
 import { StoryWorkspace } from "./components/StoryWorkspace";
+import { VideoPreviewModal } from "./components/VideoPreviewModal";
 import { buildConversationHistory, inferStoryAiAction } from "./story-chat";
 import { isProductionMessage, isPublishMessage, planDeliveryRequest, planProductionRequest } from "./video-chat";
 import type {
@@ -90,10 +91,12 @@ function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
   const [fatalError, setFatalError] = useState<string | null>(null);
+  const [previewVideoId, setPreviewVideoId] = useState<string | null>(null);
   const aiJobContext = useRef(new Map<string, { storyId: string; action: StoryAiAction }>());
   const deliveredAiJobs = useRef(new Set<string>());
   const refreshedVideoJobs = useRef(new Set<string>());
   const refreshedPublishJobs = useRef(new Set<string>());
+  const autoPreviewedVideos = useRef(new Set<string>());
 
   const notify = (message: string) => {
     setToast(message);
@@ -176,6 +179,17 @@ function App() {
   const activeAiJob = jobs.find((job) => job.id === activeAiJobId) || null;
   const activeVideoJob = jobs.find((job) => job.id === activeVideoJobId) || null;
   const activePublishJob = jobs.find((job) => job.id === activePublishJobId) || null;
+  const storyVideo = useMemo(() => {
+    const expected = story?.videoPath?.split("/").pop();
+    return expected ? videos.find((video) => video.id === expected || video.name === expected) || null : null;
+  }, [story?.videoPath, videos]);
+  const previewVideo = previewVideoId ? videos.find((video) => video.id === previewVideoId) || null : null;
+
+  useEffect(() => {
+    if (!storyVideo || autoPreviewedVideos.current.has(storyVideo.id)) return;
+    autoPreviewedVideos.current.add(storyVideo.id);
+    setPreviewVideoId(storyVideo.id);
+  }, [storyVideo]);
 
   useEffect(() => {
     if (!activeVideoJob || !["done", "failed", "cancelled"].includes(activeVideoJob.status)) return;
@@ -467,7 +481,7 @@ function App() {
 
   const appMain = useMemo(() => {
     if (view === "write") {
-      return <StoryWorkspace story={story} content={content} dirty={dirty} saving={saving} models={models} activeAiJob={activeAiJob} activeVideoJob={activeVideoJob} activePublishJob={activePublishJob} messages={story ? chatByStory[story.id] || [] : []} productionRequest={productionRequest} deliveryRequest={deliveryRequest} onContent={(value) => { setContent(value); setDirty(value !== story?.content); }} onSave={saveStory} onAi={runAi} onApplyAi={(value) => { setContent(value); setDirty(value !== story?.content); }} onProductionAction={runChatProduction} onDeliveryAction={runChatDelivery} />;
+      return <StoryWorkspace story={story} content={content} dirty={dirty} saving={saving} models={models} activeAiJob={activeAiJob} activeVideoJob={activeVideoJob} activePublishJob={activePublishJob} messages={story ? chatByStory[story.id] || [] : []} productionRequest={productionRequest} deliveryRequest={deliveryRequest} video={storyVideo} onContent={(value) => { setContent(value); setDirty(value !== story?.content); }} onSave={saveStory} onAi={runAi} onApplyAi={(value) => { setContent(value); setDirty(value !== story?.content); }} onProductionAction={runChatProduction} onDeliveryAction={runChatDelivery} onPreviewVideo={() => storyVideo && setPreviewVideoId(storyVideo.id)} />;
     }
     if (view === "prompt" && videoSettings) {
       return <PromptWorkspace story={story} assets={assets} settings={videoSettings} prompt={prompt} issues={promptIssues} building={buildingPrompt} onBuild={buildPrompt} onPrompt={setPrompt} onCopy={() => { void navigator.clipboard.writeText(prompt); notify("Prompt copied"); }} />;
@@ -476,10 +490,10 @@ function App() {
       return <ProduceWorkspace story={story} assets={assets} settings={videoSettings} prompt={prompt} issues={promptIssues} status={status} activeJob={activeVideoJob} onSettings={setVideoSettings} onBuildPrompt={() => void buildPrompt(false)} onOpenBrowser={() => void api.openBrowser().then((result) => notify(result.detail)).catch((error) => notify(error.message))} onRun={runVideo} />;
     }
     if (view === "publish") {
-      return <PublishWorkspace story={story} videos={videos} selectedVideo={selectedVideo} title={publishTitle} platforms={platforms} category={category} activeJob={activePublishJob} onVideo={setSelectedVideo} onTitle={setPublishTitle} onPlatforms={setPlatforms} onCategory={setCategory} onRun={runPublish} />;
+      return <PublishWorkspace story={story} videos={videos} selectedVideo={selectedVideo} title={publishTitle} platforms={platforms} category={category} activeJob={activePublishJob} onVideo={setSelectedVideo} onTitle={setPublishTitle} onPlatforms={setPlatforms} onCategory={setCategory} onRun={runPublish} onPreview={(video) => setPreviewVideoId(video.id)} />;
     }
     return <RunsWorkspace jobs={jobs} selectedId={selectedRunId} onSelect={setSelectedRunId} onCancel={cancelJob} />;
-  }, [view, story, content, dirty, saving, models, activeAiJob, activeVideoJob, activePublishJob, chatByStory, productionRequest, deliveryRequest, videoSettings, assets, prompt, promptIssues, buildingPrompt, status, videos, selectedVideo, publishTitle, platforms, category, jobs, selectedRunId, buildPrompt]);
+  }, [view, story, storyVideo, content, dirty, saving, models, activeAiJob, activeVideoJob, activePublishJob, chatByStory, productionRequest, deliveryRequest, videoSettings, assets, prompt, promptIssues, buildingPrompt, status, videos, selectedVideo, publishTitle, platforms, category, jobs, selectedRunId, buildPrompt]);
 
   if (fatalError) {
     return <div className="fatal-screen"><Aperture size={30} /><h1>Lala Studio could not start</h1><p>{fatalError}</p><code>npm run dev</code></div>;
@@ -545,6 +559,8 @@ function App() {
           </section>
         </div>
       )}
+
+      <VideoPreviewModal video={previewVideo} onClose={() => setPreviewVideoId(null)} />
 
       {toast && <div className="toast">{toast}</div>}
     </div>

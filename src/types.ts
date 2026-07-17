@@ -110,6 +110,7 @@ export interface VideoItem {
   name: string;
   path: string;
   relativePath: string;
+  mediaUrl: string;
   size: number;
   updatedAt: string;
 }

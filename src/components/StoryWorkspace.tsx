@@ -28,7 +28,8 @@ import type {
   ProductionRequest,
   StoryAiAction,
   StoryDocument,
-  StudioJob
+  StudioJob,
+  VideoItem
 } from "../types";
 
 interface Props {
@@ -43,12 +44,14 @@ interface Props {
   messages: ChatMessage[];
   productionRequest: ProductionRequest | null;
   deliveryRequest: DeliveryRequest | null;
+  video: VideoItem | null;
   onContent: (content: string) => void;
   onSave: () => void;
   onAi: (action: StoryAiAction, message: string, effort?: string) => void;
   onApplyAi: (content: string) => void;
   onProductionAction: (operation: "inspect" | "prepare" | "generate") => void;
   onDeliveryAction: (operation: "inspect" | "publish") => void;
+  onPreviewVideo: () => void;
 }
 
 export function StoryWorkspace({
@@ -63,12 +66,14 @@ export function StoryWorkspace({
   messages,
   productionRequest,
   deliveryRequest,
+  video,
   onContent,
   onSave,
   onAi,
   onApplyAi,
   onProductionAction,
-  onDeliveryAction
+  onDeliveryAction,
+  onPreviewVideo
 }: Props) {
   const [editorMode, setEditorMode] = useState<"write" | "preview">("write");
   const [message, setMessage] = useState("");
@@ -110,6 +115,11 @@ export function StoryWorkspace({
             </div>
           </div>
           <div className="document-actions">
+            {video && (
+              <button className="secondary-button" data-testid="story-video-preview" onClick={onPreviewVideo} title="Play generated video">
+                <Play size={15} /> Watch
+              </button>
+            )}
             <div className="segmented compact" aria-label="Editor mode">
               <button className={editorMode === "write" ? "active" : ""} onClick={() => setEditorMode("write")}>
                 <FileText size={15} /> Write

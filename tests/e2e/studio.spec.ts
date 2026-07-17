@@ -35,6 +35,37 @@ test("opens production controls", async ({ page }, testInfo) => {
   });
 });
 
+test("opens a matching generated video in the default preview modal", async ({ page }) => {
+  await page.route("**/api/bootstrap", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.videos = [{
+      id: "demo.mp4",
+      name: "demo.mp4",
+      path: "/tmp/demo.mp4",
+      relativePath: "Videos/demo.mp4",
+      mediaUrl: "/media/videos/demo.mp4",
+      size: 1024,
+      updatedAt: "2026-07-17T00:00:00.000Z"
+    }];
+    await route.fulfill({ response, json: body });
+  });
+  await page.route("**/api/stories/demo", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.videoPath = "Videos/demo.mp4";
+    body.status = "generated";
+    await route.fulfill({ response, json: body });
+  });
+
+  await page.goto("/");
+  await expect(page.getByTestId("video-preview-dialog")).toBeVisible();
+  await expect(page.getByTestId("video-preview-player")).toHaveAttribute("src", "/media/videos/demo.mp4");
+  await page.getByTestId("video-preview-close").click();
+  await expect(page.getByTestId("video-preview-dialog")).toBeHidden();
+  await expect(page.getByTestId("story-video-preview")).toBeVisible();
+});
+
 test("turns a publish chat command into a delivery contract", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("chat-input").fill("下载当前视频并发布到所有平台");
