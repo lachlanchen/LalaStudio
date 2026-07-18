@@ -250,10 +250,9 @@ async function cancelActiveRun(page) {
 
 async function productionAction(page, operation, confirmPaid) {
   if (!["inspect", "prepare", "generate"].includes(operation)) throw new Error(`Unsupported production operation: ${operation}`);
-  if (operation !== "inspect") await ensureView(page, "write");
+  await ensureView(page, "produce");
+  await page.getByTestId("produce-workspace").waitFor({ state: "visible", timeout: 60_000 });
   if (operation === "inspect") {
-    await page.getByTestId("production-inspect").click();
-    await page.getByTestId("produce-workspace").waitFor({ state: "visible", timeout: 60_000 });
     return { status: "inspected" };
   }
   if (operation === "generate" && !confirmPaid) {
@@ -265,17 +264,18 @@ async function productionAction(page, operation, confirmPaid) {
       await dialog.accept();
     });
   }
-  const testId = operation === "prepare" ? "production-prepare" : "production-generate";
-  await page.getByTestId(testId).click();
+  const testId = operation === "prepare" ? "prepare-video" : "generate-video";
+  const actionButton = page.getByTestId(testId);
+  await actionButton.waitFor({ state: "visible", timeout: 30_000 });
+  if (await actionButton.isDisabled()) throw new Error(`Production action is disabled: ${testId}`);
+  await actionButton.click();
   await page.waitForFunction(() => {
     const state = document.querySelector('[data-testid="lala-studio-app"]')?.getAttribute("data-video-job-status");
     return state === "done" || state === "failed" || state === "cancelled";
   }, undefined, { timeout: waitMs });
-  await ensureView(page, "write");
-  const job = page.getByTestId("chat-video-job");
-  await job.waitFor({ state: "visible", timeout: 30_000 });
-  const state = await job.getAttribute("data-status");
-  const detail = (await job.innerText()).trim();
+  const state = await page.getByTestId("lala-studio-app").getAttribute("data-video-job-status");
+  const job = page.getByTestId("production-job");
+  const detail = await job.count() ? (await job.innerText()).trim() : `Video job ${state}`;
   if (state !== "done") throw new Error(`Video job ${state}: ${detail}`);
   return { status: state, detail };
 }
