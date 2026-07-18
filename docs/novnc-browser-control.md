@@ -9,7 +9,7 @@ Lala Studio includes a dedicated virtual desktop and a Playwright controller for
 | Lala Studio | `http://127.0.0.1:4412` |
 | X display | `:96` |
 | x11vnc | `127.0.0.1:5916` |
-| noVNC | `http://127.0.0.1:6116/vnc_lite.html?host=127.0.0.1&port=6116&autoconnect=1&scale=1` |
+| noVNC | `http://127.0.0.1:6116/vnc.html?host=127.0.0.1&port=6116&autoconnect=1&resize=scale` |
 | Chrome CDP | `http://127.0.0.1:9466` |
 | Chrome profile | `${XDG_CACHE_HOME:-$HOME/.cache}/lala-studio-browser` |
 
@@ -21,11 +21,13 @@ Xiaoyunque uses a separate observable desktop and the existing logged-in profile
 | --- | --- |
 | X display | `:98` |
 | x11vnc | `127.0.0.1:5908` |
-| noVNC | `http://127.0.0.1:6099/vnc_lite.html?host=127.0.0.1&port=6099&autoconnect=1&scale=1` |
+| noVNC | `http://127.0.0.1:6099/vnc.html?host=127.0.0.1&port=6099&autoconnect=1&resize=scale` |
 | Chrome CDP | `http://127.0.0.1:9344` |
 | Chrome profile | `${XDG_CACHE_HOME:-$HOME/.cache}/xyq-chrome` |
 
 `scripts/launch_xyq_novnc.sh start` reuses a running profile when it can prove the owning X display. Otherwise it starts the canonical `:98` desktop. A production job fails closed when CDP is active but its window cannot be exposed through noVNC.
+
+The full noVNC client scales the entire virtual desktop into the viewer, while the launchers size and position Chrome to the virtual screen. Use the clipboard icon in the noVNC control bar to move text in either direction: paste host text into the panel before pasting in Chrome, or copy in Chrome and retrieve the received text from the panel.
 
 Lala Studio uses `LALA_STUDIO_XYQ_CDP_URL` and `LALA_STUDIO_XYQ_NOVNC_URL` for this delegated browser. These dedicated variables take priority over legacy project-wide `XYQ_*` values so the visible Studio workflow cannot silently attach to a different browser.
 

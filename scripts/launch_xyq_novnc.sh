@@ -12,7 +12,7 @@ STATE_DIR="${XYQ_NOVNC_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/lala-studio-
 URL="${XYQ_URL:-https://xyq.jianying.com/home?tab_name=integrated-agent}"
 NOVNC_WEB="${NOVNC_WEB_ROOT:-/usr/share/novnc}"
 CDP_URL="http://127.0.0.1:$CDP_PORT"
-NOVNC_URL="http://127.0.0.1:$NOVNC_PORT/vnc_lite.html?host=127.0.0.1&port=$NOVNC_PORT&autoconnect=1&scale=1"
+NOVNC_URL="http://127.0.0.1:$NOVNC_PORT/vnc.html?host=127.0.0.1&port=$NOVNC_PORT&autoconnect=1&resize=scale"
 
 mkdir -p "$STATE_DIR" "$STATE_DIR/logs" "$PROFILE_DIR"
 
@@ -64,6 +64,16 @@ discover_browser_display() {
     fi
   done
   return 1
+}
+
+fit_browser_window() {
+  local display="$1" pid="$2" window="" width="" height=""
+  [[ -n "$pid" ]] || return 0
+  window="$(DISPLAY="$display" xdotool search --onlyvisible --pid "$pid" 2>/dev/null | tail -n 1 || true)"
+  [[ -n "$window" ]] || window="$(DISPLAY="$display" xdotool search --pid "$pid" 2>/dev/null | tail -n 1 || true)"
+  [[ -n "$window" ]] || return 0
+  read -r width height < <(DISPLAY="$display" xdotool getdisplaygeometry)
+  DISPLAY="$display" xdotool windowmap "$window" windowmove --sync "$window" 0 0 windowsize --sync "$window" "$width" "$height" windowraise "$window" >/dev/null 2>&1 || true
 }
 
 show_status() {
@@ -145,7 +155,7 @@ if ! curl -fsS "$CDP_URL/json/version" >/dev/null 2>&1; then
     --remote-debugging-port="$CDP_PORT" \
     --remote-allow-origins="http://127.0.0.1:$CDP_PORT" \
     --user-data-dir="$PROFILE_DIR" \
-    --no-first-run --no-default-browser-check --ozone-platform=x11 \
+    --no-first-run --no-default-browser-check --hide-crash-restore-bubble --ozone-platform=x11 \
     --window-position=0,0 --window-size=1920,1080 \
     "$URL" >"$STATE_DIR/logs/chrome.log" 2>&1 < /dev/null &
   echo "$!" >"$STATE_DIR/chrome.pid"
@@ -154,9 +164,6 @@ fi
 curl -fsS "$CDP_URL/json/version" >/dev/null || { tail -n 80 "$STATE_DIR/logs/chrome.log" >&2; exit 6; }
 
 PID="$(browser_pid)"
-if [[ -n "$PID" ]]; then
-  WINDOW="$(DISPLAY="$ATTACHED_DISPLAY" xdotool search --pid "$PID" 2>/dev/null | tail -n 1 || true)"
-  [[ -z "$WINDOW" ]] || DISPLAY="$ATTACHED_DISPLAY" xdotool windowmap "$WINDOW" windowactivate "$WINDOW" >/dev/null 2>&1 || true
-fi
+fit_browser_window "$ATTACHED_DISPLAY" "$PID"
 
 show_status

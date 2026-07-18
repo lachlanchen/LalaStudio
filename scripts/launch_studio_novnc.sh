@@ -75,7 +75,7 @@ LOG_DIR="$STATE_DIR/logs"
 mkdir -p "$LOG_DIR"
 APP_URL="http://127.0.0.1:$APP_PORT"
 CDP_URL="http://127.0.0.1:$CDP_PORT"
-NOVNC_URL="http://127.0.0.1:$NOVNC_PORT/vnc_lite.html?host=127.0.0.1&port=$NOVNC_PORT&autoconnect=1&scale=1"
+NOVNC_URL="http://127.0.0.1:$NOVNC_PORT/vnc.html?host=127.0.0.1&port=$NOVNC_PORT&autoconnect=1&resize=scale"
 
 need() {
   command -v "$1" >/dev/null 2>&1 || { echo "Missing required command: $1" >&2; exit 3; }
@@ -98,6 +98,16 @@ stop_pid() {
     for _ in {1..30}; do kill -0 "$pid" 2>/dev/null || break; sleep .1; done
   fi
   rm -f "$file"
+}
+
+fit_browser_window() {
+  local pid="$1" window="" width="" height=""
+  [[ -n "$pid" ]] || return 0
+  window="$(DISPLAY="$DISPLAY_ID" xdotool search --onlyvisible --pid "$pid" 2>/dev/null | tail -n 1 || true)"
+  [[ -n "$window" ]] || window="$(DISPLAY="$DISPLAY_ID" xdotool search --pid "$pid" 2>/dev/null | tail -n 1 || true)"
+  [[ -n "$window" ]] || return 0
+  read -r width height < <(DISPLAY="$DISPLAY_ID" xdotool getdisplaygeometry)
+  DISPLAY="$DISPLAY_ID" xdotool windowmap "$window" windowmove --sync "$window" 0 0 windowsize --sync "$window" "$width" "$height" windowraise "$window" >/dev/null 2>&1 || true
 }
 
 show_status() {
@@ -129,6 +139,7 @@ need Xvfb
 need x11vnc
 need websockify
 need xdpyinfo
+need xdotool
 need curl
 need node
 need npm
@@ -145,7 +156,7 @@ fi
 if ! curl -fsS "$APP_URL/api/health" >/dev/null 2>&1; then
   env LALA_STUDIO_PROJECT_ROOT="$PROJECT_ROOT" LALA_STUDIO_PORT="$APP_PORT" \
     LALA_STUDIO_XYQ_CDP_URL="http://127.0.0.1:$XYQ_CDP_PORT" \
-    LALA_STUDIO_XYQ_NOVNC_URL="http://127.0.0.1:$XYQ_NOVNC_PORT/vnc_lite.html?host=127.0.0.1&port=$XYQ_NOVNC_PORT&autoconnect=1&scale=1" \
+    LALA_STUDIO_XYQ_NOVNC_URL="http://127.0.0.1:$XYQ_NOVNC_PORT/vnc.html?host=127.0.0.1&port=$XYQ_NOVNC_PORT&autoconnect=1&resize=scale" \
     setsid npm --prefix "$STUDIO_ROOT" run start >"$LOG_DIR/studio.log" 2>&1 < /dev/null &
   echo "$!" >"$STATE_DIR/studio.pid"
   for _ in {1..120}; do curl -fsS "$APP_URL/api/health" >/dev/null 2>&1 && break; sleep .25; done
@@ -175,7 +186,7 @@ if ! curl -fsS "$CDP_URL/json/version" >/dev/null 2>&1; then
     --remote-debugging-address=127.0.0.1 \
     --remote-debugging-port="$CDP_PORT" \
     --user-data-dir="$PROFILE_DIR" \
-    --no-first-run --no-default-browser-check --disable-default-apps --disable-sync \
+    --no-first-run --no-default-browser-check --hide-crash-restore-bubble --disable-default-apps --disable-sync \
     --disable-background-networking --disable-dev-shm-usage --disable-gpu \
     --ozone-platform=x11 --window-position=0,0 --window-size=1920,1080 \
     about:blank >"$LOG_DIR/chrome.log" 2>&1 < /dev/null &
@@ -183,6 +194,9 @@ if ! curl -fsS "$CDP_URL/json/version" >/dev/null 2>&1; then
   for _ in {1..160}; do curl -fsS "$CDP_URL/json/version" >/dev/null 2>&1 && break; sleep .25; done
 fi
 curl -fsS "$CDP_URL/json/version" >/dev/null || { tail -n 100 "$LOG_DIR/chrome.log" >&2; exit 5; }
+
+CHROME_PID="$(pgrep -f -- "--remote-debugging-port=${CDP_PORT}( |$)" | head -n 1 || true)"
+fit_browser_window "$CHROME_PID"
 
 (cd "$STUDIO_ROOT" && node tools/lala-studio-browser.mjs open --cdp-url "$CDP_URL" --app-url "$APP_URL" >/dev/null)
 show_status

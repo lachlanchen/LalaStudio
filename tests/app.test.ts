@@ -18,8 +18,9 @@ describe("Studio API", () => {
     ]));
     expect(response.body.defaults.video).toMatchObject({ duration: 15, ratio: "4:3", preGenerateWordCard: true });
     expect(response.body.defaults.video.selectedAssetIds).not.toContain("trio");
-    expect(response.body.status.noVncUrl).toContain("scale=1");
-    expect(response.body.status.noVncUrl).not.toContain("resize=remote");
+    expect(response.body.status.noVncUrl).toContain("/vnc.html?");
+    expect(response.body.status.noVncUrl).toContain("resize=scale");
+    expect(response.body.status.noVncUrl).not.toContain("vnc_lite.html");
     for (const video of response.body.videos) {
       expect(video.mediaUrl).toBe(`/media/videos/${encodeURIComponent(video.name)}`);
     }
