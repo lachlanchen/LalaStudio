@@ -1,6 +1,9 @@
+import fs from "node:fs";
+import path from "node:path";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../server/app.js";
+import { runtimeRoot } from "../server/config.js";
 
 describe("Studio API", () => {
   const app = createApp();
@@ -29,6 +32,19 @@ describe("Studio API", () => {
   it("rejects invalid or missing video media paths", async () => {
     await request(app).get("/media/videos/not-a-video.txt").expect(404);
     await request(app).get("/media/videos/missing-preview.mp4").expect(404);
+  });
+
+  it("serves generated references from the hidden runtime directory", async () => {
+    const storyId = `generated-media-test-${process.pid}`;
+    const directory = path.join(runtimeRoot, "generated-assets", storyId);
+    const filePath = path.join(directory, "word-card.png");
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(filePath, Buffer.from("generated-reference"));
+    try {
+      await request(app).get(`/media/generated-assets/${storyId}/word-card.png`).expect(200);
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   it("blocks unconfirmed paid generation before a workflow starts", async () => {

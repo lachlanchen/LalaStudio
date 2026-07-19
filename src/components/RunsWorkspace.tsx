@@ -1,4 +1,4 @@
-import { Bot, CheckCircle2, CircleX, Clock3, Film, LoaderCircle, Radio, Square } from "lucide-react";
+import { Bot, CheckCircle2, CircleX, Clock3, Film, Image, LoaderCircle, Radio, Square } from "lucide-react";
 import type { StudioJob } from "../types";
 
 interface Props {
@@ -8,7 +8,7 @@ interface Props {
   onCancel: (id: string) => void;
 }
 
-const jobIcons = { ai: Bot, video: Film, publish: Radio, system: Clock3 };
+const jobIcons = { ai: Bot, image: Image, video: Film, publish: Radio, system: Clock3 };
 
 export function RunsWorkspace({ jobs, selectedId, onSelect, onCancel }: Props) {
   const selected = jobs.find((job) => job.id === selectedId) || jobs[0];

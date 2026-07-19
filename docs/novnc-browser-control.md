@@ -57,6 +57,10 @@ node tools/lala-studio-browser.mjs save
 node tools/lala-studio-browser.mjs production \
   --message "Generate this 15 second 4:3 video with the lowest-credit model" \
   --operation inspect
+node tools/lala-studio-browser.mjs production \
+  --message "First generate a cinematic scene keyframe, then prepare this 15 second video" \
+  --operation references \
+  --scene-assets raraxia,ayachan
 node tools/lala-studio-browser.mjs delivery \
   --message "Download the current result if needed and publish it to all platforms" \
   --operation inspect
@@ -78,7 +82,7 @@ node tools/lala-studio-browser.mjs delivery \
 
 The controller does not mutate Studio APIs directly. It types, clicks, and waits on visible DOM state through the dedicated Chrome CDP session. A publish chat command becomes a visible delivery contract. Studio verifies an existing MP4 or performs a download-only Xiaoyunque pass, then invokes the normal one-command LazyEdit workflow. Evidence is stored under `.runtime/browser-evidence/`.
 
-When the words-card asset is enabled, `Generate card with Codex first` is on by default. The production executor uses the base words-card image only as a design reference, creates a new PNG with the exact episode word, visually verifies its text, and uploads that generated PNG. Card generation failure blocks paid submission.
+When the words-card asset is enabled, `Generate card with Codex first` is on by default. Image generation creates the physical card, but Studio renders the four canonical strings onto the generated display with `scripts/render_word_card_text.sh`; image-model spelling is never the authoritative text layer. The optional scene-keyframe stage uses its own reference subset and visual brief. Both verified PNGs are previewed in Studio and reused by video preparation. Any missing output blocks paid submission.
 
 ## Recovery
 

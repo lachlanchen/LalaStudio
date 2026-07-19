@@ -29,6 +29,10 @@ test("opens production controls", async ({ page }, testInfo) => {
   await expect(page.getByText("Video settings", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Video model")).toHaveValue("Seedance 2.0 Mini 体验版");
   await expect(page.getByTestId("pregenerate-word-card")).toBeChecked();
+  await expect(page.getByTestId("pregenerate-scene-image")).not.toBeChecked();
+  await page.getByTestId("pregenerate-scene-image").check();
+  await expect(page.getByTestId("scene-image-prompt")).toBeVisible();
+  await expect(page.getByTestId("generate-reference-images")).toBeEnabled();
   await page.screenshot({
     path: `.playwright/${testInfo.project.name}-produce.png`,
     fullPage: true

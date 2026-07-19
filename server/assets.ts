@@ -17,7 +17,7 @@ const definitions: Omit<AssetDefinition, "mediaUrl">[] = [
     label: "庄子机器人",
     role: "Robot identity and LazyingArt chest logo",
     relativePath: "LazyingArtRobot.png",
-    required: true,
+    required: false,
     defaultSelected: true
   },
   {
@@ -41,7 +41,7 @@ const definitions: Omit<AssetDefinition, "mediaUrl">[] = [
     label: "啦啦侠",
     role: "Primary individual Rara Xia identity reference",
     relativePath: "raraxia.jpeg",
-    required: true,
+    required: false,
     defaultSelected: true
   },
   {
@@ -49,7 +49,7 @@ const definitions: Omit<AssetDefinition, "mediaUrl">[] = [
     label: "阿芽酱",
     role: "Primary individual Aya Chan identity reference",
     relativePath: "ayachan.png",
-    required: true,
+    required: false,
     defaultSelected: true
   },
   {
@@ -57,7 +57,7 @@ const definitions: Omit<AssetDefinition, "mediaUrl">[] = [
     label: "飒飒君",
     role: "Primary individual Sasa Kun identity reference",
     relativePath: "sasakun.jpeg",
-    required: true,
+    required: false,
     defaultSelected: true
   },
   {

@@ -8,6 +8,16 @@ import { runCodex } from "./codex.js";
 import { resolveModelProfile } from "./config.js";
 import type { JobStore } from "./job-store.js";
 import { atomicWrite } from "./lib/files.js";
+import {
+  buildReferenceAssetPlan,
+  buildReferenceImageTask,
+  clearReferenceAssets,
+  commitReferenceAssetManifest,
+  referenceAssetsAreCurrent,
+  validateReferenceAssets,
+  writeWordCardSpec,
+  type ReferenceAssetPlan
+} from "./reference-assets.js";
 
 function commandAvailable(command: string): boolean {
   return spawnSync("bash", ["-lc", `command -v ${command}`], { encoding: "utf8" }).status === 0;
@@ -111,31 +121,52 @@ export function probeVideo(filePath: string, expectedDuration?: number): { durat
 
 export function buildVideoExecutorTask(input: {
   storyId: string;
+  story?: string;
   promptPath: string;
   assetIds: string[];
   assetPaths: string[];
   settings: VideoSettings;
   operation: "prepare" | "generate";
   runDir: string;
+  referencePlan?: ReferenceAssetPlan;
+  reuseReferenceAssets?: boolean;
 }): string {
   const action = input.operation === "prepare"
     ? "Prepare the visible Xiaoyunque composer completely, but do not click the paid submit/generate button."
     : "Submit exactly once after preflight passes, monitor to completion, download the MP4, verify it, and copy it to Videos/.";
   const cardIndex = input.assetIds.indexOf("word-card");
-  const generatedCardPath = path.join(input.runDir, "generated-word-card.png");
+  const generatedCardPath = input.referencePlan?.wordCardPath || path.join(input.runDir, "generated-word-card.png");
+  const generatedScenePath = input.referencePlan?.sceneImagePath || (input.settings.preGenerateSceneImage ? path.join(input.runDir, "generated-scene-reference.png") : null);
   const uploadPaths = input.assetPaths.map((assetPath, index) =>
     index === cardIndex && input.settings.preGenerateWordCard ? generatedCardPath : assetPath
   );
-  const wordCardStage = cardIndex >= 0 && input.settings.preGenerateWordCard
-    ? `Before opening the Xiaoyunque upload menu, use Codex image generation with the source reference ${input.assetPaths[cardIndex]} to create ${generatedCardPath}. Match the reference card's physical product design and layout. First verify that all four values below express the same intended word and are correctly written in their respective language or script. The card face must contain only this four-line block, clearly and once:
-
-${input.settings.wordCard.english}
-${input.settings.wordCard.japanese}
-${input.settings.wordCard.furigana}
-${input.settings.wordCard.chinese}
-
-Do not render language names, field labels, colons, bullets, or numbering. Inspect the generated PNG and compare every rendered line character-by-character with the requested block. If any language is inaccurate, unreadable, missing, duplicated, or labeled, regenerate before any paid action. Upload the verified generated PNG as attachment ${cardIndex + 1} instead of the base reference.`
-    : "No Codex word-card pre-generation is required for this run.";
+  if (generatedScenePath) uploadPaths.push(generatedScenePath);
+  const fallbackPlan: ReferenceAssetPlan = input.referencePlan || {
+    storyId: input.storyId,
+    directory: input.runDir,
+    manifestPath: path.join(input.runDir, "generated-assets.json"),
+    fingerprint: "run-local",
+    wordCardPath: cardIndex >= 0 && input.settings.preGenerateWordCard ? generatedCardPath : null,
+    wordCardBasePath: cardIndex >= 0 && input.settings.preGenerateWordCard ? path.join(input.runDir, "generated-word-card-base.png") : null,
+    wordCardSpecPath: cardIndex >= 0 && input.settings.preGenerateWordCard ? path.join(input.runDir, "generated-word-card-spec.json") : null,
+    sceneImagePath: generatedScenePath,
+    wordCardUrl: null,
+    sceneImageUrl: null
+  };
+  const imageStage = input.reuseReferenceAssets
+    ? `Reuse the already generated reference PNGs after visually checking that they are readable and relevant:\n${[fallbackPlan.wordCardPath, fallbackPlan.sceneImagePath].filter(Boolean).map((item) => `- ${item}`).join("\n")}`
+    : buildReferenceImageTask({
+        story: input.story || `Read the current story from ${input.promptPath}.`,
+        settings: input.settings,
+        assetPaths: input.assetPaths,
+        sceneAssetPaths: (input.settings.sceneImageAssetIds.length ? input.settings.sceneImageAssetIds : input.assetIds.filter((id) => id !== "word-card"))
+          .map((id) => {
+            const index = input.assetIds.indexOf(id);
+            return index >= 0 ? input.assetPaths[index] : null;
+          })
+          .filter((item): item is string => Boolean(item)),
+        plan: fallbackPlan
+      });
 
   return `
 Use the local lalachan-xyq-browser-video and imagegen skills plus the repository browser/CDP scripts.
@@ -149,8 +180,8 @@ Visibility contract:
 - Reuse the shared profile and configured CDP endpoint ${studioConfig.cdpUrl}; bring the Xiaoyunque tab to the front so the operator can watch it in noVNC.
 - Do not inherit an unrelated hidden desktop and do not open duplicate Xiaoyunque tabs.
 
-Codex word-card stage:
-- ${wordCardStage}
+Reference-image stage:
+${imageStage}
 
 Production contract:
 - Reuse the logged-in shared Xiaoyunque Chrome profile and current usable thread. Do not use the Xiaoyunque API.
@@ -163,19 +194,71 @@ Production contract:
 - Ratio: ${input.settings.ratio}
 - Confirm every attachment visibly. Do not paste paths into the composer.
 - Keep the same current thread when recovering from a transient page error.
-- Never click submit twice. If credits, login, CAPTCHA, word-card generation, noVNC visibility, or attachment proof blocks the task, stop with evidence.
+- Never click submit twice. If credits, login, CAPTCHA, reference-image generation, noVNC visibility, or attachment proof blocks the task, stop with evidence.
 - Before submitting, check whether this exact story result is already downloaded in Videos/. If a valid matching MP4 exists, do not spend credits again; report and reuse it.
 - When monitoring/downloading, pass the watcher --expected-duration ${input.settings.duration} and reject any unrelated media outside the normal five-second tolerance.
 - A matching ffprobe header is not sufficient: decode the complete video and audio streams with ffmpeg before accepting or copying a result.
 - Save preflight and final screenshots under ${input.runDir}.
 
-Return a concise completion report with noVNC URL, page/thread URL, visible settings, attachment count, generated word-card path when applicable, screenshots, and downloaded MP4 path when applicable.
+Return a concise completion report with noVNC URL, page/thread URL, visible settings, attachment count, generated reference-image paths when applicable, screenshots, and downloaded MP4 path when applicable.
 `.trim();
+}
+
+export function startReferenceImageWorkflow(input: {
+  jobs: JobStore;
+  storyId: string;
+  story: string;
+  settings: VideoSettings;
+}): StudioJob {
+  const profile = resolveModelProfile("workflow");
+  const assetPaths = input.settings.selectedAssetIds.map(getAssetPath);
+  const sceneAssetIds = input.settings.sceneImageAssetIds.length
+    ? input.settings.sceneImageAssetIds
+    : input.settings.selectedAssetIds.filter((id) => id !== "word-card");
+  const sceneAssetPaths = sceneAssetIds.map(getAssetPath);
+  const plan = buildReferenceAssetPlan({ storyId: input.storyId, story: input.story, settings: input.settings });
+  if (!plan.wordCardPath && !plan.sceneImagePath) {
+    throw new Error("Enable word-card or scene-image pre-generation first");
+  }
+  const job = input.jobs.create({ type: "image", title: `Generate references ${input.storyId}`, profile });
+
+  input.jobs.run(job, async ({ log, progress, signal }) => {
+    progress(5, "Preparing reference-image workspace");
+    fs.mkdirSync(plan.directory, { recursive: true });
+    clearReferenceAssets(plan);
+    writeWordCardSpec(plan, input.settings);
+    const task = buildReferenceImageTask({ story: input.story, settings: input.settings, assetPaths, sceneAssetPaths, plan });
+    progress(12, "Generating reference images with Codex");
+    const report = await runCodex({
+      profile,
+      prompt: task,
+      sandbox: "danger-full-access",
+      singleExecutor: true,
+      signal,
+      log
+    });
+    progress(88, "Validating generated PNG files");
+    const probes = validateReferenceAssets(plan);
+    commitReferenceAssetManifest(plan);
+    log(`Reference image fingerprint: ${plan.fingerprint}`);
+    return {
+      storyId: plan.storyId,
+      report,
+      fingerprint: plan.fingerprint,
+      wordCardPath: plan.wordCardPath,
+      sceneImagePath: plan.sceneImagePath,
+      wordCardUrl: plan.wordCardUrl,
+      sceneImageUrl: plan.sceneImageUrl,
+      probes
+    };
+  });
+  return job;
 }
 
 export function startVideoWorkflow(input: {
   jobs: JobStore;
   storyId: string;
+  story: string;
   prompt: string;
   settings: VideoSettings;
   operation: "prepare" | "generate";
@@ -197,6 +280,7 @@ export function startVideoWorkflow(input: {
   const promptPath = path.join(runDir, "xyq-prompt.md");
   atomicWrite(promptPath, `${input.prompt.trim()}\n`);
   const assetPaths = input.settings.selectedAssetIds.map(getAssetPath);
+  const referencePlan = buildReferenceAssetPlan({ storyId: input.storyId, story: input.story, settings: input.settings });
 
   input.jobs.run(job, async ({ log, progress, signal }) => {
     if (input.operation === "generate" && input.existingVideoPath && !input.forceRegenerate) {
@@ -211,14 +295,23 @@ export function startVideoWorkflow(input: {
     const browser = ensureXyqBrowserVisible();
     log(browser.detail);
     progress(8, "Handing the visible production contract to Codex");
+    const reuseReferenceAssets = referenceAssetsAreCurrent(referencePlan);
+    if (!reuseReferenceAssets && (referencePlan.wordCardPath || referencePlan.sceneImagePath)) {
+      clearReferenceAssets(referencePlan);
+      writeWordCardSpec(referencePlan, input.settings);
+    }
+    log(reuseReferenceAssets ? "Reusing current pre-generated reference images" : "Reference images will be generated before browser upload");
     const task = buildVideoExecutorTask({
       storyId: input.storyId,
+      story: input.story,
       promptPath,
       assetIds: input.settings.selectedAssetIds,
       assetPaths,
       settings: input.settings,
       operation: input.operation,
-      runDir
+      runDir,
+      referencePlan,
+      reuseReferenceAssets
     });
     const result = await runCodex({
       profile,
@@ -229,7 +322,19 @@ export function startVideoWorkflow(input: {
       log
     });
     progress(96, "Validating the production report");
-    return { report: result, runDir, promptPath };
+    let referenceAssets = null;
+    if (referencePlan.wordCardPath || referencePlan.sceneImagePath) {
+      referenceAssets = validateReferenceAssets(referencePlan);
+      commitReferenceAssetManifest(referencePlan);
+    }
+    return {
+      report: result,
+      runDir,
+      promptPath,
+      referenceAssets,
+      wordCardUrl: referencePlan.wordCardUrl,
+      sceneImageUrl: referencePlan.sceneImageUrl
+    };
   });
   return job;
 }

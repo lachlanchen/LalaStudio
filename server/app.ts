@@ -24,6 +24,7 @@ import { assertInside, safeId } from "./lib/files.js";
 import {
   launchXyqBrowser,
   listVideos,
+  startReferenceImageWorkflow,
   startDeliveryWorkflow,
   startPublishWorkflow,
   startVideoWorkflow,
@@ -65,7 +66,10 @@ const videoSettingsSchema = z.object({
   ratio: z.enum(["4:3", "9:16", "16:9"]),
   selectedAssetIds: z.array(z.string()).min(1).max(12),
   wordCard: wordCardSchema,
-  preGenerateWordCard: z.boolean().default(true)
+  preGenerateWordCard: z.boolean().default(true),
+  preGenerateSceneImage: z.boolean().default(false),
+  sceneImagePrompt: z.string().max(6000).default(""),
+  sceneImageAssetIds: z.array(z.string()).max(12).default([])
 });
 
 export function createApp() {
@@ -95,7 +99,10 @@ export function createApp() {
             ratio: "4:3",
             selectedAssetIds: listAssets().filter((asset) => asset.defaultSelected).map((asset) => asset.id),
             wordCard: { english: "together", japanese: "一緒", furigana: "いっしょ", chinese: "一起" },
-            preGenerateWordCard: true
+            preGenerateWordCard: true,
+            preGenerateSceneImage: false,
+            sceneImagePrompt: "",
+            sceneImageAssetIds: []
           },
           platforms: ["shipinhao", "youtube", "instagram", "douyin"]
         }
@@ -131,6 +138,19 @@ export function createApp() {
   });
 
   app.get("/api/videos", (_req, res) => res.json({ videos: listVideos() }));
+  app.get("/media/generated-assets/:storyId/:file", (req, res) => {
+    const storyId = safeId(req.params.storyId);
+    const file = req.params.file;
+    if (!new Set(["word-card.png", "scene-reference.png"]).has(file)) {
+      return res.status(404).json({ error: "Generated reference image not found" });
+    }
+    const generatedRoot = path.join(runtimeRoot, "generated-assets");
+    const filePath = assertInside(generatedRoot, path.join(generatedRoot, storyId, file));
+    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+      return res.status(404).json({ error: "Generated reference image not found" });
+    }
+    res.sendFile(filePath, { dotfiles: "allow" });
+  });
   app.get("/media/videos/:id", (req, res) => {
     const id = req.params.id;
     if (id !== path.basename(id) || !id.toLowerCase().endsWith(".mp4")) {
@@ -244,12 +264,27 @@ export function createApp() {
     const job = startVideoWorkflow({
       jobs,
       storyId: parsed.storyId,
+      story: story.content,
       prompt: parsed.prompt,
       settings: parsed.settings as VideoSettings,
       operation: parsed.operation,
       paidActionConfirmed: parsed.paidActionConfirmed,
       existingVideoPath,
       forceRegenerate: parsed.forceRegenerate
+    });
+    res.status(202).json(job);
+  });
+
+  app.post("/api/reference-image/jobs", (req, res) => {
+    const parsed = z
+      .object({ storyId: z.string().min(1), settings: videoSettingsSchema })
+      .parse(req.body);
+    const story = storyRepository.get(parsed.storyId);
+    const job = startReferenceImageWorkflow({
+      jobs,
+      storyId: parsed.storyId,
+      story: story.content,
+      settings: parsed.settings as VideoSettings
     });
     res.status(202).json(job);
   });

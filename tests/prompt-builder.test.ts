@@ -14,7 +14,10 @@ const settings = {
     furigana: "いっしょ",
     chinese: "一起"
   },
-  preGenerateWordCard: true
+  preGenerateWordCard: true,
+  preGenerateSceneImage: true,
+  sceneImagePrompt: "A luminous city rising through the clouds",
+  sceneImageAssetIds: ["raraxia", "ayachan"]
 };
 
 describe("Xiaoyunque prompt builder", () => {
@@ -34,6 +37,7 @@ describe("Xiaoyunque prompt builder", () => {
     expect(prompt).not.toContain("Japanese: 一緒");
     expect(prompt).toContain("不要字幕");
     expect(prompt).not.toContain("Trio group");
+    expect(prompt).toContain("图8：本集预生成场景关键帧");
     expect(prompt).not.toContain("English: Rain");
     expect(prompt).not.toMatch(/\/(?:home|Users|mnt|tmp)\//);
     expect(validateVideoPrompt(prompt)).toEqual([]);
@@ -42,5 +46,15 @@ describe("Xiaoyunque prompt builder", () => {
   it("rejects prompts that leak local paths", () => {
     const issues = validateVideoPrompt("啦啦侠、阿芽酱、飒飒君。不要字幕。/home/user/private.png");
     expect(issues).toContain("Prompt contains a local filesystem path");
+  });
+
+  it("accepts an episode with only the characters selected for that story", () => {
+    const twoCharacterPrompt = buildVideoPrompt({
+      story: "# 星星的港湾\n\n啦啦侠接住小星，阿芽酱骑鹤靠近帮助他。",
+      assets: listAssets(),
+      settings: { ...settings, selectedAssetIds: ["word-card", "raraxia", "ayachan"] }
+    });
+    expect(twoCharacterPrompt).not.toContain("飒飒君严格参考");
+    expect(validateVideoPrompt(twoCharacterPrompt)).toEqual([]);
   });
 });

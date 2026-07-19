@@ -90,7 +90,7 @@ export interface ModelProfile {
 
 export interface StudioJob {
   id: string;
-  type: "ai" | "video" | "publish" | "system";
+  type: "ai" | "image" | "video" | "publish" | "system";
   title: string;
   status: "queued" | "running" | "done" | "failed" | "cancelled";
   progress: number;
@@ -134,6 +134,9 @@ export interface VideoSettings {
   selectedAssetIds: string[];
   wordCard: WordCard;
   preGenerateWordCard: boolean;
+  preGenerateSceneImage: boolean;
+  sceneImagePrompt: string;
+  sceneImageAssetIds: string[];
 }
 
 export interface BootstrapData {

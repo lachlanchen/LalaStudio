@@ -242,6 +242,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .scene-stage[data-ratio="16-9"] { aspect-ratio: 16 / 9; }
 .stage-backdrop { position: absolute; inset: 0; background: linear-gradient(180deg, #8ecbc8 0 56%, #bad0b2 56%); }
 .stage-backdrop::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 22%; background: #d3bd88; clip-path: polygon(0 38%, 17% 8%, 35% 42%, 51% 13%, 67% 46%, 84% 8%, 100% 35%, 100% 100%, 0 100%); }
+.stage-reference-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .character-line { position: absolute; inset: 12% 7% 8%; display: flex; align-items: flex-end; justify-content: center; gap: 1%; }
 .character-line img { width: 24%; max-height: 82%; object-fit: contain; filter: drop-shadow(0 8px 6px rgba(32,45,39,.2)); }
 .stage-overlay { position: absolute; top: 10px; right: 10px; display: grid; gap: 2px; padding: 6px 8px; color: white; background: rgba(20,27,24,.72); border-radius: 5px; text-align: right; }
@@ -250,6 +251,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .service-row { width: min(100%, 820px); display: flex; align-items: center; gap: 14px; margin: 11px auto; color: var(--muted); font-size: 9px; }
 .service-row div, .service-row a { display: flex; align-items: center; gap: 6px; }
 .service-row a { margin-left: auto; color: var(--teal); text-decoration: none; }
+.generated-reference-strip { width: min(100%, 820px); display: flex; align-items: center; gap: 9px; margin: 8px auto; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: white; }
+.generated-reference-strip > div { min-width: 150px; display: grid; gap: 2px; margin-right: auto; }
+.generated-reference-strip strong { font-size: 9px; }
+.generated-reference-strip > div span { color: var(--muted); font-size: 7px; }
+.generated-reference-strip a { display: grid; grid-template-columns: 42px auto; align-items: center; gap: 6px; color: var(--ink); font-size: 7px; text-decoration: none; }
+.generated-reference-strip img { width: 42px; height: 34px; object-fit: cover; border: 1px solid var(--line); border-radius: 3px; }
 .production-job, .production-note { width: min(100%, 820px); margin: 8px auto 0; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: white; }
 .production-note { display: flex; align-items: center; gap: 10px; }
 .production-note > div { display: grid; gap: 2px; }
@@ -287,6 +294,19 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .word-card-fields .word-card-generation > span { display: grid; gap: 2px; }
 .word-card-fields .word-card-generation strong { font-size: 8px; }
 .word-card-fields .word-card-generation small { color: var(--muted); font-size: 7px; line-height: 1.35; }
+.scene-reference-fields { display: grid; gap: 7px; margin-top: 10px; padding: 9px; background: #e8eeea; border-radius: 6px; }
+.scene-reference-fields label { color: var(--muted); font-size: 7px; }
+.scene-reference-fields .scene-reference-generation { display: flex; align-items: center; gap: 8px; padding: 7px; color: #314039; background: white; border: 1px solid #c5d0ca; border-radius: 4px; }
+.scene-reference-fields .scene-reference-generation > input { width: 15px; height: 15px; margin: 0; flex: 0 0 auto; }
+.scene-reference-fields .scene-reference-generation > span { display: grid; gap: 2px; }
+.scene-reference-fields strong { font-size: 8px; }
+.scene-reference-fields small { color: var(--muted); font-size: 7px; line-height: 1.35; }
+.scene-reference-fields textarea { width: 100%; min-height: 82px; margin-top: 4px; padding: 7px; resize: vertical; border: 1px solid #c5d0ca; border-radius: 4px; background: white; font: inherit; font-size: 8px; line-height: 1.45; }
+.scene-source-selector { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.scene-source-selector button { min-width: 0; display: grid; gap: 3px; justify-items: center; padding: 4px; border: 1px solid #c5d0ca; border-radius: 4px; background: white; cursor: pointer; }
+.scene-source-selector button.selected { border-color: #67a99d; background: #edf7f4; }
+.scene-source-selector img { width: 100%; height: 28px; object-fit: cover; border-radius: 2px; }
+.scene-source-selector span { width: 100%; overflow: hidden; color: var(--muted); font-size: 6px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .control-actions { display: grid; gap: 7px; margin-top: 16px; }
 
 .publish-main { padding: 0 20px 18px; overflow: auto; }

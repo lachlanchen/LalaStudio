@@ -30,6 +30,14 @@ function required(options, name) {
   return String(value);
 }
 
+function messageOption(options) {
+  if (options["message-file"] && options["message-file"] !== true) {
+    return fs.readFileSync(path.resolve(String(options["message-file"])), "utf8").trim();
+  }
+  if (options.message && options.message !== true) return String(options.message);
+  throw new Error("Missing --message or --message-file");
+}
+
 function numeric(options, name, fallback) {
   if (options[name] === undefined) return fallback;
   const value = Number(options[name]);
@@ -69,6 +77,11 @@ async function connectPage() {
   if (!page.url().startsWith(targetOrigin)) await page.goto(appUrl, { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.bringToFront();
   await page.getByTestId("lala-studio-app").waitFor({ state: "visible", timeout: 60_000 });
+  const previewClose = page.getByTestId("video-preview-close");
+  if (await previewClose.count() && await previewClose.isVisible()) {
+    await previewClose.click();
+    await page.getByTestId("video-preview-dialog").waitFor({ state: "hidden", timeout: 10_000 });
+  }
   return { browser, page };
 }
 
@@ -88,6 +101,7 @@ async function readStatus(page) {
     videoJob: document.querySelector('[data-testid="chat-video-job"]')?.getAttribute("data-status")
       || document.querySelector('[data-testid="production-job"]')?.getAttribute("data-status")
       || null,
+    imageJob: root.getAttribute("data-image-job-status") || null,
     deliveryJob: document.querySelector('[data-testid="chat-delivery-job"]')?.getAttribute("data-status")
       || root.getAttribute("data-delivery-job-status")
       || null
@@ -248,13 +262,98 @@ async function cancelActiveRun(page) {
   return { jobId, status: await page.locator(`[data-testid="run-row"][data-job-id="${jobId}"]`).getAttribute("data-status") };
 }
 
-async function productionAction(page, operation, confirmPaid) {
-  if (!["inspect", "prepare", "generate"].includes(operation)) throw new Error(`Unsupported production operation: ${operation}`);
+async function configureSceneSources(page, csv) {
+  if (!csv) return;
+  const requested = new Set(csv.split(",").map((value) => value.trim()).filter(Boolean));
+  const toggles = page.getByTestId("scene-source-toggle");
+  await toggles.first().waitFor({ state: "visible", timeout: 30_000 });
+  const available = [];
+  for (let index = 0; index < await toggles.count(); index += 1) {
+    const toggle = toggles.nth(index);
+    const assetId = await toggle.getAttribute("data-asset-id");
+    if (!assetId) continue;
+    available.push(assetId);
+    const selected = await toggle.getAttribute("data-selected") === "true";
+    if (selected !== requested.has(assetId)) await toggle.click();
+  }
+  const unknown = [...requested].filter((assetId) => !available.includes(assetId));
+  if (unknown.length) throw new Error(`Unknown scene source assets: ${unknown.join(", ")}`);
+}
+
+async function configureVideoAssets(page, csv) {
+  if (!csv) return;
+  const requested = new Set(csv.split(",").map((value) => value.trim()).filter(Boolean));
+  if (!requested.size) throw new Error("--video-assets must select at least one reference");
+  const toggles = page.getByTestId("asset-toggle");
+  await toggles.first().waitFor({ state: "visible", timeout: 30_000 });
+  const available = [];
+  for (let index = 0; index < await toggles.count(); index += 1) {
+    const toggle = toggles.nth(index);
+    const assetId = await toggle.getAttribute("data-asset-id");
+    if (!assetId) continue;
+    available.push(assetId);
+    const selected = await toggle.getAttribute("data-selected") === "true";
+    const desired = requested.has(assetId);
+    if (selected !== desired) {
+      await toggle.click();
+      await page.waitForFunction(
+        ({ id, expected }) => document.querySelector(`[data-testid="asset-toggle"][data-asset-id="${id}"]`)?.getAttribute("data-selected") === expected,
+        { id: assetId, expected: desired ? "true" : "false" },
+        { timeout: 10_000 }
+      );
+    }
+  }
+  const unknown = [...requested].filter((assetId) => !available.includes(assetId));
+  if (unknown.length) throw new Error(`Unknown video reference assets: ${unknown.join(", ")}`);
+}
+
+async function rebuildProductionPrompt(page) {
+  const button = page.getByTestId("rebuild-prompt");
+  await button.waitFor({ state: "visible", timeout: 30_000 });
+  const responsePromise = page.waitForResponse(
+    (response) => response.url().includes("/api/prompts/build") && response.request().method() === "POST",
+    { timeout: 30_000 }
+  );
+  await button.click();
+  const response = await responsePromise;
+  if (!response.ok()) throw new Error(`Prompt rebuild failed with HTTP ${response.status()}`);
+  const payload = await response.json();
+  if (Array.isArray(payload.issues) && payload.issues.length) {
+    throw new Error(`Prompt preflight failed: ${payload.issues.join("; ")}`);
+  }
+  await button.waitFor({ state: "visible", timeout: 30_000 });
+}
+
+async function productionAction(page, operation, confirmPaid, sceneAssets = "", videoAssets = "") {
+  if (!["inspect", "references", "prepare", "generate"].includes(operation)) throw new Error(`Unsupported production operation: ${operation}`);
   await ensureView(page, "produce");
   await page.getByTestId("produce-workspace").waitFor({ state: "visible", timeout: 60_000 });
+  await configureVideoAssets(page, videoAssets);
+  await configureSceneSources(page, sceneAssets);
   if (operation === "inspect") {
     return { status: "inspected" };
   }
+  if (operation === "references") {
+    const app = page.getByTestId("lala-studio-app");
+    const previousId = await app.getAttribute("data-image-job-id");
+    const actionButton = page.getByTestId("generate-reference-images");
+    await actionButton.waitFor({ state: "visible", timeout: 30_000 });
+    if (await actionButton.isDisabled()) throw new Error("Reference-image generation is disabled; enable a word card or scene keyframe first");
+    await actionButton.click();
+    await page.waitForFunction((previous) => {
+      const root = document.querySelector('[data-testid="lala-studio-app"]');
+      const id = root?.getAttribute("data-image-job-id");
+      const state = root?.getAttribute("data-image-job-status");
+      return Boolean(id && id !== previous && ["done", "failed", "cancelled"].includes(state || ""));
+    }, previousId, { timeout: waitMs });
+    const state = await app.getAttribute("data-image-job-status");
+    const job = page.getByTestId("production-job");
+    const detail = await job.count() ? (await job.innerText()).trim() : `Reference-image job ${state}`;
+    if (state !== "done") throw new Error(`Reference-image job ${state}: ${detail}`);
+    const previews = await page.getByTestId("generated-reference-strip").locator("a").evaluateAll((links) => links.map((link) => ({ href: link.href, label: link.textContent?.trim() || "" })));
+    return { status: state, detail, previews };
+  }
+  await rebuildProductionPrompt(page);
   if (operation === "generate" && !confirmPaid) {
     throw new Error("Paid generation requires --confirm-paid");
   }
@@ -290,14 +389,14 @@ function usage() {
     `  navigate --view write|prompt|produce|publish|runs\n` +
     `  create-story --title TEXT [--duration 15|30|60]\n` +
     `  select-story --match TEXT\n` +
-    `  chat --message TEXT [--action chat|draft|review|final|refine] [--wait-seconds N]\n` +
+    `  chat (--message TEXT | --message-file PATH) [--action chat|draft|review|final|refine] [--wait-seconds N]\n` +
     `  story-pipeline --title TEXT --message TEXT [--duration 15|30|60]\n` +
     `  apply-last\n` +
     `  save\n` +
     `  cancel-active\n` +
-    `  production [--message TEXT] --operation inspect|prepare|generate [--confirm-paid]\n` +
-    `  delivery [--message TEXT] --operation inspect|publish [--confirm-publish]\n` +
-    `  run --story-match TEXT --story-message TEXT [--action final] --production-message TEXT --operation inspect|prepare|generate [--confirm-paid]\n\n` +
+    `  production [--message TEXT | --message-file PATH] --operation inspect|references|prepare|generate [--video-assets id,id] [--scene-assets id,id] [--confirm-paid]\n` +
+    `  delivery [--message TEXT | --message-file PATH] --operation inspect|publish [--confirm-publish]\n` +
+    `  run --story-match TEXT --story-message TEXT [--action final] --production-message TEXT --operation inspect|references|prepare|generate [--confirm-paid]\n\n` +
     `All commands manipulate visible DOM controls through the dedicated Chrome CDP session.\n`);
 }
 
@@ -327,7 +426,7 @@ try {
   }
   else if (command === "create-story") result = await createStory(page, required(options, "title"), numeric(options, "duration", 15));
   else if (command === "select-story") result = await selectStory(page, required(options, "match"));
-  else if (command === "chat") result = await sendChat(page, required(options, "message"), String(options.action || "chat"));
+  else if (command === "chat") result = await sendChat(page, messageOption(options), String(options.action || "chat"));
   else if (command === "story-pipeline") {
     const created = await createStory(page, required(options, "title"), numeric(options, "duration", 15));
     const refined = await sendChat(page, required(options, "message"), "refine");
@@ -344,10 +443,10 @@ try {
   } else if (command === "cancel-active") {
     result = await cancelActiveRun(page);
   } else if (command === "production") {
-    if (options.message) await sendChat(page, String(options.message), "chat");
-    result = await productionAction(page, String(options.operation || "inspect"), Boolean(options["confirm-paid"]));
+    if (options.message || options["message-file"]) await sendChat(page, messageOption(options), "chat");
+    result = await productionAction(page, String(options.operation || "inspect"), Boolean(options["confirm-paid"]), String(options["scene-assets"] || ""), String(options["video-assets"] || ""));
   } else if (command === "delivery") {
-    if (options.message) await sendChat(page, String(options.message), "chat");
+    if (options.message || options["message-file"]) await sendChat(page, messageOption(options), "chat");
     result = await deliveryAction(page, String(options.operation || "inspect"), Boolean(options["confirm-publish"]));
   } else if (command === "run") {
     const selected = await selectStory(page, required(options, "story-match"));
@@ -355,7 +454,7 @@ try {
     await applyLast(page);
     await saveStory(page);
     await sendChat(page, required(options, "production-message"), "chat");
-    const production = await productionAction(page, String(options.operation || "inspect"), Boolean(options["confirm-paid"]));
+    const production = await productionAction(page, String(options.operation || "inspect"), Boolean(options["confirm-paid"]), String(options["scene-assets"] || ""), String(options["video-assets"] || ""));
     result = { selected, storyResult, production };
   } else {
     usage();

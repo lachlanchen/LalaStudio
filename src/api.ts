@@ -50,6 +50,8 @@ export const api = {
     forceRegenerate?: boolean;
   }) =>
     request<StudioJob>("/api/video/jobs", { method: "POST", body: JSON.stringify(input) }),
+  referenceImageJob: (input: { storyId: string; settings: VideoSettings }) =>
+    request<StudioJob>("/api/reference-image/jobs", { method: "POST", body: JSON.stringify(input) }),
   publishJob: (input: {
     storyId: string;
     videoId: string;

@@ -5,6 +5,7 @@ import {
   LoaderCircle,
   MonitorPlay,
   Play,
+  Sparkles,
   Settings2,
   UploadCloud
 } from "lucide-react";
@@ -18,9 +19,11 @@ interface Props {
   issues: string[];
   status: ServiceStatus | null;
   activeJob: StudioJob | null;
+  referenceJob: StudioJob | null;
   onSettings: (settings: VideoSettings) => void;
   onBuildPrompt: () => void;
   onOpenBrowser: () => void;
+  onGenerateReferences: () => void;
   onRun: (operation: "prepare" | "generate") => void;
 }
 
@@ -31,10 +34,16 @@ const models = [
   "Seedance 2.0 Fast VIP"
 ];
 
-export function ProduceWorkspace({ story, assets, settings, prompt, issues, status, activeJob, onSettings, onBuildPrompt, onOpenBrowser, onRun }: Props) {
+export function ProduceWorkspace({ story, assets, settings, prompt, issues, status, activeJob, referenceJob, onSettings, onBuildPrompt, onOpenBrowser, onGenerateReferences, onRun }: Props) {
   if (!story) return <main className="blank-workspace">Select a story before production.</main>;
-  const busy = activeJob?.status === "running" || activeJob?.status === "queued";
+  const busy = [activeJob, referenceJob].some((job) => job?.status === "running" || job?.status === "queued");
   const selectedAssets = assets.filter((asset) => settings.selectedAssetIds.includes(asset.id));
+  const defaultSceneAssetIds = settings.selectedAssetIds.filter((id) => id !== "word-card");
+  const sceneImageAssetIds = settings.sceneImageAssetIds.length ? settings.sceneImageAssetIds : defaultSceneAssetIds;
+  const referenceResult = referenceJob?.status === "done" ? referenceJob.result : activeJob?.status === "done" ? activeJob.result : undefined;
+  const wordCardUrl = typeof referenceResult?.wordCardUrl === "string" ? referenceResult.wordCardUrl : null;
+  const sceneImageUrl = typeof referenceResult?.sceneImageUrl === "string" ? referenceResult.sceneImageUrl : null;
+  const displayedJob = referenceJob && ["queued", "running", "failed"].includes(referenceJob.status) ? referenceJob : activeJob;
 
   const toggleAsset = (asset: AssetDefinition) => {
     if (asset.required && settings.selectedAssetIds.includes(asset.id)) return;
@@ -42,6 +51,13 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
       ? settings.selectedAssetIds.filter((id) => id !== asset.id)
       : [...settings.selectedAssetIds, asset.id];
     onSettings({ ...settings, selectedAssetIds });
+  };
+
+  const toggleSceneAsset = (assetId: string) => {
+    const sceneImageAssetIds = (settings.sceneImageAssetIds.length ? settings.sceneImageAssetIds : defaultSceneAssetIds).includes(assetId)
+      ? (settings.sceneImageAssetIds.length ? settings.sceneImageAssetIds : defaultSceneAssetIds).filter((id) => id !== assetId)
+      : [...(settings.sceneImageAssetIds.length ? settings.sceneImageAssetIds : defaultSceneAssetIds), assetId];
+    onSettings({ ...settings, sceneImageAssetIds });
   };
 
   return (
@@ -59,7 +75,7 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
         </div>
 
         <div className="scene-stage" data-testid="scene-stage" data-ratio={settings.ratio.replace(":", "-")}>
-          <div className="stage-backdrop" />
+          {sceneImageUrl ? <img className="stage-reference-image" src={sceneImageUrl} alt="Generated scene reference" /> : <div className="stage-backdrop" />}
           <div className="character-line">
             {selectedAssets
               .filter((asset) => ["raraxia", "ayachan", "sasakun", "zhuangzi"].includes(asset.id))
@@ -79,15 +95,23 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
           {status?.noVncUrl && <a href={status.noVncUrl} target="_blank" rel="noreferrer">noVNC <ExternalLink size={13} /></a>}
         </div>
 
-        {activeJob ? (
-          <div className={`production-job ${activeJob.status}`} data-testid="production-job" data-status={activeJob.status}>
+        {(wordCardUrl || sceneImageUrl) && (
+          <div className="generated-reference-strip" data-testid="generated-reference-strip">
+            <div><strong>Generated references</strong><span>Verified local PNGs used by the upload workflow</span></div>
+            {wordCardUrl && <a href={wordCardUrl} target="_blank" rel="noreferrer"><img src={wordCardUrl} alt="Generated word card" /><span>Word card</span></a>}
+            {sceneImageUrl && <a href={sceneImageUrl} target="_blank" rel="noreferrer"><img src={sceneImageUrl} alt="Generated scene reference" /><span>Scene keyframe</span></a>}
+          </div>
+        )}
+
+        {displayedJob ? (
+          <div className={`production-job ${displayedJob.status}`} data-testid="production-job" data-status={displayedJob.status}>
             <div className="job-title-line">
-              {busy ? <LoaderCircle className="spin" size={18} /> : <CheckCircle2 size={18} />}
-              <div><strong>{activeJob.title}</strong><span>{activeJob.message}</span></div>
-              <b>{activeJob.progress}%</b>
+              {displayedJob.status === "running" || displayedJob.status === "queued" ? <LoaderCircle className="spin" size={18} /> : <CheckCircle2 size={18} />}
+              <div><strong>{displayedJob.title}</strong><span>{displayedJob.message}</span></div>
+              <b>{displayedJob.progress}%</b>
             </div>
-            <div className="progress-track"><span style={{ width: `${activeJob.progress}%` }} /></div>
-            {activeJob.logs.length > 0 && <pre>{activeJob.logs.slice(-7).join("\n")}</pre>}
+            <div className="progress-track"><span style={{ width: `${displayedJob.progress}%` }} /></div>
+            {displayedJob.logs.length > 0 && <pre>{displayedJob.logs.slice(-7).join("\n")}</pre>}
           </div>
         ) : (
           <div className="production-note">
@@ -163,7 +187,45 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
           </div>
         )}
 
+        <div className="scene-reference-fields">
+          <label className="scene-reference-generation">
+            <input
+              data-testid="pregenerate-scene-image"
+              type="checkbox"
+              checked={settings.preGenerateSceneImage}
+              onChange={(event) => onSettings({ ...settings, preGenerateSceneImage: event.target.checked })}
+            />
+            <span><strong>Generate scene keyframe first</strong><small>Use selected references and a visual brief, then upload the verified PNG with the video prompt.</small></span>
+          </label>
+          {settings.preGenerateSceneImage && (
+            <>
+              <label>Scene source references</label>
+              <div className="scene-source-selector">
+                {assets.filter((asset) => asset.id !== "word-card").map((asset) => {
+                  const selected = sceneImageAssetIds.includes(asset.id);
+                  return (
+                    <button key={asset.id} type="button" data-testid="scene-source-toggle" data-asset-id={asset.id} data-selected={selected ? "true" : "false"} className={selected ? "selected" : ""} onClick={() => toggleSceneAsset(asset.id)} title={asset.label}>
+                      <img src={asset.mediaUrl} alt="" /><span>{asset.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <label>Scene visual brief
+                <textarea
+                  data-testid="scene-image-prompt"
+                  value={settings.sceneImagePrompt}
+                  placeholder="Describe one cinematic establishing frame: world, scale, lighting, characters, and visible action."
+                  onChange={(event) => onSettings({ ...settings, sceneImagePrompt: event.target.value })}
+                />
+              </label>
+            </>
+          )}
+        </div>
+
         <div className="control-actions">
+          <button className="secondary-button full" data-testid="generate-reference-images" onClick={onGenerateReferences} disabled={busy || (!settings.preGenerateSceneImage && !(settings.preGenerateWordCard && settings.selectedAssetIds.includes("word-card")))}>
+            <Sparkles size={16} /> Generate reference images
+          </button>
           <button className="secondary-button full" data-testid="rebuild-prompt" onClick={onBuildPrompt} disabled={busy}>
             <UploadCloud size={16} /> Rebuild prompt
           </button>

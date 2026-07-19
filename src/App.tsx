@@ -179,6 +179,11 @@ function App() {
   const activeAiJob = jobs.find((job) => job.id === activeAiJobId) || null;
   const activeVideoJob = jobs.find((job) => job.id === activeVideoJobId) || null;
   const activePublishJob = jobs.find((job) => job.id === activePublishJobId) || null;
+  const activeReferenceJob = story
+    ? jobs.find((job) => job.type === "image" && (
+        job.result?.storyId === story.id || job.title === `Generate references ${story.id}`
+      )) || null
+    : null;
   const storyVideo = useMemo(() => {
     const expected = story?.videoPath?.split("/").pop();
     return expected ? videos.find((video) => video.id === expected || video.name === expected) || null : null;
@@ -397,6 +402,18 @@ function App() {
     }
   };
 
+  const runReferenceImages = async () => {
+    if (!story || !videoSettings) return;
+    try {
+      const job = await api.referenceImageJob({ storyId: story.id, settings: videoSettings });
+      setJobs((current) => [job, ...current]);
+      setSelectedRunId(job.id);
+      setView("produce");
+    } catch (error) {
+      notify(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   const runChatProduction = async (operation: "inspect" | "prepare" | "generate") => {
     if (!story || !productionRequest || productionRequest.storyId !== story.id) return;
     setBuildingPrompt(true);
@@ -487,13 +504,13 @@ function App() {
       return <PromptWorkspace story={story} assets={assets} settings={videoSettings} prompt={prompt} issues={promptIssues} building={buildingPrompt} onBuild={buildPrompt} onPrompt={setPrompt} onCopy={() => { void navigator.clipboard.writeText(prompt); notify("Prompt copied"); }} />;
     }
     if (view === "produce" && videoSettings) {
-      return <ProduceWorkspace story={story} assets={assets} settings={videoSettings} prompt={prompt} issues={promptIssues} status={status} activeJob={activeVideoJob} onSettings={setVideoSettings} onBuildPrompt={() => void buildPrompt(false)} onOpenBrowser={() => void api.openBrowser().then((result) => notify(result.detail)).catch((error) => notify(error.message))} onRun={runVideo} />;
+      return <ProduceWorkspace story={story} assets={assets} settings={videoSettings} prompt={prompt} issues={promptIssues} status={status} activeJob={activeVideoJob} referenceJob={activeReferenceJob} onSettings={setVideoSettings} onBuildPrompt={() => void buildPrompt(false)} onOpenBrowser={() => void api.openBrowser().then((result) => notify(result.detail)).catch((error) => notify(error.message))} onGenerateReferences={() => void runReferenceImages()} onRun={runVideo} />;
     }
     if (view === "publish") {
       return <PublishWorkspace story={story} videos={videos} selectedVideo={selectedVideo} title={publishTitle} platforms={platforms} category={category} activeJob={activePublishJob} onVideo={setSelectedVideo} onTitle={setPublishTitle} onPlatforms={setPlatforms} onCategory={setCategory} onRun={runPublish} onPreview={(video) => setPreviewVideoId(video.id)} />;
     }
     return <RunsWorkspace jobs={jobs} selectedId={selectedRunId} onSelect={setSelectedRunId} onCancel={cancelJob} />;
-  }, [view, story, storyVideo, content, dirty, saving, models, activeAiJob, activeVideoJob, activePublishJob, chatByStory, productionRequest, deliveryRequest, videoSettings, assets, prompt, promptIssues, buildingPrompt, status, videos, selectedVideo, publishTitle, platforms, category, jobs, selectedRunId, buildPrompt]);
+  }, [view, story, storyVideo, content, dirty, saving, models, activeAiJob, activeVideoJob, activePublishJob, activeReferenceJob, chatByStory, productionRequest, deliveryRequest, videoSettings, assets, prompt, promptIssues, buildingPrompt, status, videos, selectedVideo, publishTitle, platforms, category, jobs, selectedRunId, buildPrompt]);
 
   if (fatalError) {
     return <div className="fatal-screen"><Aperture size={30} /><h1>Lala Studio could not start</h1><p>{fatalError}</p><code>npm run dev</code></div>;
@@ -511,6 +528,8 @@ function App() {
       data-ai-job-id={activeAiJob?.id || ""}
       data-video-job-status={activeVideoJob?.status || "idle"}
       data-video-job-id={activeVideoJob?.id || ""}
+      data-image-job-status={activeReferenceJob?.status || "idle"}
+      data-image-job-id={activeReferenceJob?.id || ""}
       data-delivery-job-status={activePublishJob?.status || "idle"}
       data-delivery-job-id={activePublishJob?.id || ""}
     >

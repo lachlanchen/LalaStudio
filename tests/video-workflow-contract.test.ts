@@ -15,7 +15,10 @@ describe("visible Xiaoyunque production contract", () => {
         ratio: "4:3",
         selectedAssetIds: ["word-card", "raraxia"],
         wordCard: { english: "glide", japanese: "滑る", furigana: "すべる", chinese: "滑行" },
-        preGenerateWordCard: true
+        preGenerateWordCard: true,
+        preGenerateSceneImage: true,
+        sceneImagePrompt: "A realistic mountain city above the clouds",
+        sceneImageAssetIds: ["raraxia"]
       },
       operation: "prepare",
       runDir: "/tmp/run"
@@ -24,8 +27,13 @@ describe("visible Xiaoyunque production contract", () => {
     expect(task).toContain("Codex image generation");
     expect(task).toContain("generated-word-card.png");
     expect(task).toContain("glide\n滑る\nすべる\n滑行");
-    expect(task).toContain("Do not render language names, field labels, colons, bullets, or numbering");
+    expect(task).toContain("deterministic renderer");
+    expect(task).toContain("render_word_card_text.sh");
+    expect(task).toContain("Do not add language names, field labels, colons, bullets, numbering");
     expect(task).not.toContain("English: glide");
+    expect(task).toContain("generated-scene-reference.png");
+    expect(task).toContain("A realistic mountain city above the clouds");
+    expect(task).toContain("3. /tmp/run/generated-scene-reference.png");
     expect(task).toContain("check whether this exact story result is already downloaded");
   });
 });

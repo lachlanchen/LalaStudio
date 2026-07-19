@@ -57,14 +57,19 @@ export function planProductionRequest(input: {
   const explicitAgent = /(?:创作\s*agent|agent\s*(?:模式|mode)|智能长视频|长视频)/i.test(input.message);
   const explicitShort = /(?:沉浸式短片|短片模式|short\s*film|duanpian)/i.test(input.message);
   const mode: VideoSettings["mode"] = explicitAgent ? "agent" : explicitShort ? "short" : duration > 30 ? "agent" : input.current.mode;
+  const requestsSceneImage = /(?:先|预先|提前|预生成|生成).{0,16}(?:场景图|场景参考图|概念图|关键帧|scene\s+(?:image|reference)|keyframe|concept\s+art)/i.test(input.message);
   const settings: VideoSettings = {
     ...input.current,
     mode,
     model: parseModel(input.message, input.current.model),
     duration,
-    ratio: parseRatio(input.message, input.current.ratio)
+    ratio: parseRatio(input.message, input.current.ratio),
+    preGenerateSceneImage: requestsSceneImage || input.current.preGenerateSceneImage,
+    sceneImagePrompt: requestsSceneImage ? input.message.trim() : input.current.sceneImagePrompt,
+    sceneImageAssetIds: input.current.sceneImageAssetIds
   };
-  const summary = `${settings.duration}s · ${settings.ratio} · ${settings.mode === "short" ? "沉浸式短片" : "创作 Agent"} · ${settings.model} · ${settings.selectedAssetIds.length} 张参考图`;
+  const generatedSceneCount = settings.preGenerateSceneImage ? 1 : 0;
+  const summary = `${settings.duration}s · ${settings.ratio} · ${settings.mode === "short" ? "沉浸式短片" : "创作 Agent"} · ${settings.model} · ${settings.selectedAssetIds.length + generatedSceneCount} 张参考图${generatedSceneCount ? "（含预生成场景图）" : ""}`;
   return {
     id: `production-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     storyId: input.storyId,

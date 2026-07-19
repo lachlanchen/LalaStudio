@@ -41,7 +41,15 @@ stop_pid() {
 }
 
 browser_pid() {
-  pgrep -f -- "--remote-debugging-port=${CDP_PORT}( |$)" | head -n 1 || true
+  local pid command
+  while read -r pid; do
+    [[ -r "/proc/$pid/cmdline" ]] || continue
+    command="$(tr '\0' ' ' < "/proc/$pid/cmdline")"
+    [[ "$command" == *"--remote-debugging-port=${CDP_PORT}"* ]] || continue
+    [[ "$command" == *"--type="* ]] && continue
+    printf '%s\n' "$pid"
+    return 0
+  done < <(pgrep -f -- "--remote-debugging-port=${CDP_PORT}( |$)" || true)
 }
 
 discover_browser_display() {

@@ -28,7 +28,9 @@ Lala Studio combines a Markdown story room, natural-language critique, stable pr
 - Treats the writer panel as a real conversation: it sends a bounded recent history with the current editor draft, gives the latest relevant reply precedence for follow-up edits, and auto-routes plain-language requests to chat, critique, full drafting, or save-ready revision.
 - Routes Codex `gpt-5.6-sol` by task: low effort for chat, high for drafting, xhigh for critique, and ultra for final writing and production.
 - Keeps a visible co-writer conversation where a video request becomes an inspectable production contract instead of an immediate paid action.
-- Builds path-free Xiaoyunque prompts with exact attachment numbering, then uses Codex image generation and the supplied card reference to make and verify each fresh unlabeled multilingual word card before upload.
+- Builds path-free Xiaoyunque prompts with exact attachment numbering, then pre-generates reusable reference images before browser upload.
+- Creates each physical multilingual word card from the supplied product reference, then renders the four canonical strings deterministically so image-model spelling cannot be accepted by mistake.
+- Can create and preview an episode-specific cinematic scene keyframe from a separately selected subset of character and product references; the verified PNG is appended to the normal Xiaoyunque upload order.
 - Prepares the browser composer without spending credits, and requires explicit confirmation before one paid generation submit.
 - Opens the logged-in Xiaoyunque profile inside a second observable noVNC desktop before every browser production run.
 - Recognizes publish commands in Studio chat, verifies or downloads the matching result, then packages it through LazyEdit with story context, portrait blur fill, multilingual subtitles, a top-right logo, and platform queues.
@@ -79,6 +81,10 @@ scripts/launch_studio_novnc.sh start --project-root "$LALA_STUDIO_PROJECT_ROOT"
 node tools/lala-studio-browser.mjs status
 node tools/lala-studio-browser.mjs story-pipeline --title "Story title" --duration 15 --message "Story idea"
 node tools/lala-studio-browser.mjs chat --action final --message "Polish the current story"
+node tools/lala-studio-browser.mjs production \
+  --message "First generate a cinematic scene keyframe, then prepare this 15 second video" \
+  --operation references \
+  --scene-assets raraxia,ayachan
 node tools/lala-studio-browser.mjs delivery \
   --message "Download the current result and publish it to all platforms" \
   --operation inspect

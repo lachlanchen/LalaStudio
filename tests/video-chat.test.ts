@@ -9,7 +9,10 @@ const defaults: VideoSettings = {
   ratio: "4:3",
   selectedAssetIds: ["word-card", "zhuangzi", "lightmind", "notebook", "raraxia", "ayachan", "sasakun"],
   wordCard: { english: "glide", japanese: "滑る", furigana: "すべる", chinese: "滑行" },
-  preGenerateWordCard: true
+  preGenerateWordCard: true,
+  preGenerateSceneImage: false,
+  sceneImagePrompt: "",
+  sceneImageAssetIds: []
 };
 
 describe("video chat planning", () => {
@@ -56,5 +59,16 @@ describe("video chat planning", () => {
     expect(request.settings.ratio).toBe("9:16");
     expect(request.settings.mode).toBe("agent");
     expect(request.settings.model).toBe("Seedance 2.0 Mini 体验版");
+  });
+
+  it("turns a scene-keyframe request into a reusable pre-generation setting", () => {
+    const request = planProductionRequest({
+      storyId: "story-3",
+      message: "先生成一张场景关键帧，再用它制作15秒视频",
+      current: defaults
+    });
+    expect(request.settings.preGenerateSceneImage).toBe(true);
+    expect(request.settings.sceneImagePrompt).toContain("场景关键帧");
+    expect(request.summary).toContain("含预生成场景图");
   });
 });

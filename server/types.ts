@@ -14,7 +14,7 @@ export type JobStatus = "queued" | "running" | "done" | "failed" | "cancelled";
 
 export interface StudioJob {
   id: string;
-  type: "ai" | "video" | "publish" | "system";
+  type: "ai" | "image" | "video" | "publish" | "system";
   title: string;
   status: JobStatus;
   progress: number;
@@ -85,4 +85,7 @@ export interface VideoSettings {
   selectedAssetIds: string[];
   wordCard: WordCard;
   preGenerateWordCard: boolean;
+  preGenerateSceneImage: boolean;
+  sceneImagePrompt: string;
+  sceneImageAssetIds: string[];
 }

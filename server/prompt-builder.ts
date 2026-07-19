@@ -25,6 +25,10 @@ export function buildVideoPrompt(input: {
 
   const references = selected.map((asset, index) => `- 图${index + 1}：${asset.label}。${asset.role}。`);
   const labels = new Map(selected.map((asset, index) => [asset.id, `图${index + 1}`]));
+  const sceneImageLabel = input.settings.preGenerateSceneImage ? `图${selected.length + 1}` : null;
+  if (sceneImageLabel) {
+    references.push(`- ${sceneImageLabel}：本集预生成场景关键帧。保持它的世界设计、建筑、光线、空间尺度和构图方向。`);
+  }
   const identityLines = [
     labels.has("raraxia") ? `啦啦侠严格参考${labels.get("raraxia")}，保持同一张脸、体型和服装。` : "",
     labels.has("ayachan") ? `阿芽酱严格参考${labels.get("ayachan")}，保持同一张脸、体型和服装。` : "",
@@ -46,6 +50,7 @@ ${references.join("\n")}
 
 ${identityLines.join("\n")}
 ${wordCard}
+${sceneImageLabel ? `\n${sceneImageLabel}是本集场景参考，不替代人物身份图。人物外观仍以各自单人参考图为准。` : ""}
 
 ## 故事
 
@@ -59,9 +64,6 @@ export function validateVideoPrompt(prompt: string): string[] {
   const issues: string[] = [];
   if (/\/(?:home|Users|mnt|tmp)\//.test(prompt)) issues.push("Prompt contains a local filesystem path");
   if (!/不要字幕/.test(prompt)) issues.push("Prompt does not explicitly disable generated subtitles");
-  if (!/啦啦侠/.test(prompt) || !/阿芽酱/.test(prompt) || !/飒飒君/.test(prompt)) {
-    issues.push("Prompt does not anchor all three main characters");
-  }
   if (prompt.length > 6500) issues.push("Prompt is likely overpacked");
   return issues;
 }
