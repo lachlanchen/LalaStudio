@@ -298,6 +298,9 @@ function App() {
       setStory(saved);
       setContent(saved.content);
       setStories((current) => current.map((item) => item.id === saved.id ? saved : item));
+      if (saved.wordCard) {
+        setVideoSettings((current) => current ? { ...current, wordCard: saved.wordCard! } : current);
+      }
       setDirty(false);
       notify("Story saved");
     } catch (error) {

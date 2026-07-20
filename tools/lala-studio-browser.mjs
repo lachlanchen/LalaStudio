@@ -218,11 +218,15 @@ async function deliveryAction(page, operation, confirmPublish) {
     if (dialog.type() !== "confirm") throw new Error(`Unexpected dialog: ${dialog.type()}`);
     await dialog.accept();
   });
+  const app = page.getByTestId("lala-studio-app");
+  const previousId = await app.getAttribute("data-delivery-job-id");
   await page.getByTestId("delivery-publish").click();
-  await page.waitForFunction(() => {
-    const state = document.querySelector('[data-testid="lala-studio-app"]')?.getAttribute("data-delivery-job-status");
-    return state === "done" || state === "failed" || state === "cancelled";
-  }, undefined, { timeout: waitMs });
+  await page.waitForFunction((previous) => {
+    const root = document.querySelector('[data-testid="lala-studio-app"]');
+    const id = root?.getAttribute("data-delivery-job-id");
+    const state = root?.getAttribute("data-delivery-job-status");
+    return Boolean(id && id !== previous && ["done", "failed", "cancelled"].includes(state || ""));
+  }, previousId, { timeout: waitMs });
   await ensureView(page, "write");
   const job = page.getByTestId("chat-delivery-job");
   await job.waitFor({ state: "visible", timeout: 30_000 });
@@ -265,6 +269,9 @@ async function cancelActiveRun(page) {
 async function configureSceneSources(page, csv) {
   if (!csv) return;
   const requested = new Set(csv.split(",").map((value) => value.trim()).filter(Boolean));
+  const sceneGeneration = page.getByTestId("pregenerate-scene-image");
+  await sceneGeneration.waitFor({ state: "visible", timeout: 30_000 });
+  if (!(await sceneGeneration.isChecked())) await sceneGeneration.check();
   const toggles = page.getByTestId("scene-source-toggle");
   await toggles.first().waitFor({ state: "visible", timeout: 30_000 });
   const available = [];
@@ -367,12 +374,16 @@ async function productionAction(page, operation, confirmPaid, sceneAssets = "", 
   const actionButton = page.getByTestId(testId);
   await actionButton.waitFor({ state: "visible", timeout: 30_000 });
   if (await actionButton.isDisabled()) throw new Error(`Production action is disabled: ${testId}`);
+  const app = page.getByTestId("lala-studio-app");
+  const previousId = await app.getAttribute("data-video-job-id");
   await actionButton.click();
-  await page.waitForFunction(() => {
-    const state = document.querySelector('[data-testid="lala-studio-app"]')?.getAttribute("data-video-job-status");
-    return state === "done" || state === "failed" || state === "cancelled";
-  }, undefined, { timeout: waitMs });
-  const state = await page.getByTestId("lala-studio-app").getAttribute("data-video-job-status");
+  await page.waitForFunction((previous) => {
+    const root = document.querySelector('[data-testid="lala-studio-app"]');
+    const id = root?.getAttribute("data-video-job-id");
+    const state = root?.getAttribute("data-video-job-status");
+    return Boolean(id && id !== previous && ["done", "failed", "cancelled"].includes(state || ""));
+  }, previousId, { timeout: waitMs });
+  const state = await app.getAttribute("data-video-job-status");
   const job = page.getByTestId("production-job");
   const detail = await job.count() ? (await job.innerText()).trim() : `Video job ${state}`;
   if (state !== "done") throw new Error(`Video job ${state}: ${detail}`);

@@ -184,5 +184,7 @@ ${wordCardTask}
 ${sceneTask}
 
 For each requested output, create its parent directory, use the supplied local reference images with the image-generation tool, copy the final generated bitmap to the exact output path, and inspect it visually before accepting it. Do not merely write a prompt or claim that an image was generated. Finish only when every requested PNG exists and is visually usable. Return the final output paths and a short verification note.
+
+Every target image has a local file path. For each imagegen call, pass only \`referenced_image_paths\` with the needed local files and omit \`num_last_images_to_include\` entirely. These two reference mechanisms are mutually exclusive; never send both in one call.
 `.trim();
 }

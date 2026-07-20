@@ -37,6 +37,8 @@ describe("reference-image planning", () => {
     expect(task).toContain("A monumental palace rises from the sea into a star field");
     expect(task).toContain(plan.sceneImagePath!);
     expect(task).toContain("render_word_card_text.sh");
+    expect(task).toContain("pass only `referenced_image_paths`");
+    expect(task).toContain("omit `num_last_images_to_include` entirely");
     expect(task).not.toContain("English: harbor");
   });
 

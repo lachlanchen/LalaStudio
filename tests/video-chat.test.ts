@@ -71,4 +71,15 @@ describe("video chat planning", () => {
     expect(request.settings.sceneImagePrompt).toContain("场景关键帧");
     expect(request.summary).toContain("含预生成场景图");
   });
+
+  it("recognizes natural Chinese phrasing for making a scene keyframe", () => {
+    const request = planProductionRequest({
+      storyId: "yakiniku",
+      message: "生成视频前先用 Codex imagegen 制作一张写实场景关键帧",
+      current: defaults,
+      storyDuration: 15
+    });
+    expect(request.settings.preGenerateSceneImage).toBe(true);
+    expect(request.settings.sceneImagePrompt).toContain("写实场景关键帧");
+  });
 });
