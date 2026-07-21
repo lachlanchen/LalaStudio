@@ -9,6 +9,7 @@ export interface StoryRefinementInput {
   story?: string;
   duration: number;
   history?: AiConversationTurn[];
+  worldContext?: string;
 }
 
 export interface StoryRefinementResult {
@@ -62,6 +63,7 @@ export function buildPipelineCritiquePrompt(input: {
   draft: string;
   message: string;
   duration: number;
+  worldContext?: string;
 }): string {
   return `
 You are an independent LALACHAN story critic. Everything required is in this prompt.
@@ -89,6 +91,9 @@ Do not rewrite the full story. Give the final writer a concise, actionable brief
 Original request:
 ${input.message}
 
+Selected series canon:
+${input.worldContext || "No episode-specific world records were selected."}
+
 Draft:
 ${input.draft}
 `.trim();
@@ -99,11 +104,13 @@ export function buildPipelineFinalPrompt(input: {
   critique: string;
   message: string;
   duration: number;
+  worldContext?: string;
 }): string {
   return buildAiPrompt({
     action: "final",
     duration: input.duration,
     story: input.draft,
+    worldContext: input.worldContext,
     message: `Use the independent critic report below as evidence. Repair the exact problems while preserving what works. Before answering, verify that the original request's protagonist, main activity, setting, relationship, and tone are still explicit; do not let a supporting character replace the requested protagonist. Return only the clean final story document.\n\nOriginal request:\n${input.message}\n\nIndependent critic report:\n${input.critique}`
   });
 }
@@ -122,7 +129,7 @@ export async function runStoryRefinementPipeline(
   const draft = cleanDocument(await dependencies.run(
     "draft",
     dependencies.profiles.draft,
-    buildAiPrompt({ action: "draft", message: draftMessage, duration: input.duration, history: input.history })
+    buildAiPrompt({ action: "draft", message: draftMessage, duration: input.duration, history: input.history, worldContext: input.worldContext })
   ));
   stages.push({ name: "draft", model: dependencies.profiles.draft.model, effort: dependencies.profiles.draft.effort });
 
@@ -130,7 +137,7 @@ export async function runStoryRefinementPipeline(
   const critique = cleanDocument(await dependencies.run(
     "critique",
     dependencies.profiles.review,
-    buildPipelineCritiquePrompt({ draft, message: input.message, duration: input.duration })
+    buildPipelineCritiquePrompt({ draft, message: input.message, duration: input.duration, worldContext: input.worldContext })
   ));
   stages.push({ name: "critique", model: dependencies.profiles.review.model, effort: dependencies.profiles.review.effort });
 
@@ -138,7 +145,7 @@ export async function runStoryRefinementPipeline(
   let content = cleanDocument(await dependencies.run(
     "final",
     dependencies.profiles.final,
-    buildPipelineFinalPrompt({ draft, critique, message: input.message, duration: input.duration })
+    buildPipelineFinalPrompt({ draft, critique, message: input.message, duration: input.duration, worldContext: input.worldContext })
   ));
   stages.push({ name: "final", model: dependencies.profiles.final.model, effort: dependencies.profiles.final.effort });
 
@@ -155,6 +162,7 @@ export async function runStoryRefinementPipeline(
         action: "final",
         duration: input.duration,
         story: content,
+        worldContext: input.worldContext,
         message: `The deterministic quality gate found these remaining problems:\n- ${problems.join("\n- ")}\nRepair only these problems. Keep the story concise, natural, causal, and save-ready.`
       })
     ));

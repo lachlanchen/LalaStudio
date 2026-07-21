@@ -1,4 +1,4 @@
-export type WorkspaceView = "write" | "prompt" | "produce" | "publish" | "runs";
+export type WorkspaceView = "write" | "world" | "prompt" | "produce" | "publish" | "runs";
 export type StoryAiAction = "chat" | "draft" | "review" | "final" | "refine";
 
 export interface AiConversationTurn {
@@ -139,6 +139,140 @@ export interface VideoSettings {
   sceneImageAssetIds: string[];
 }
 
+export type WorldEntityStatus = "active" | "resting" | "retired";
+export type WorldArcStatus = "open" | "paused" | "resolved";
+export type WorldMediaKind = "character-reference" | "prop-reference" | "scene-reference" | "word-card" | "video";
+
+export interface WorldCharacter {
+  id: string;
+  name: string;
+  role: string;
+  personality: string;
+  voice: string;
+  visualRules: string[];
+  relationshipNotes: string[];
+  defaultOutfitId: string;
+  assetIds: string[];
+  status: WorldEntityStatus;
+}
+
+export interface WorldPlace {
+  id: string;
+  name: string;
+  role: string;
+  summary: string;
+  visualAnchors: string[];
+  recurringUses: string[];
+  connectedPlaceIds: string[];
+  status: WorldEntityStatus;
+}
+
+export interface WorldTool {
+  id: string;
+  name: string;
+  ownerIds: string[];
+  purpose: string;
+  rule: string;
+  limitation: string;
+  assetIds: string[];
+  status: WorldEntityStatus;
+}
+
+export interface WorldOutfit {
+  id: string;
+  name: string;
+  characterIds: string[];
+  use: string;
+  visualRules: string[];
+  assetIds: string[];
+  version: number;
+  status: WorldEntityStatus;
+}
+
+export interface WorldArc {
+  id: string;
+  name: string;
+  premise: string;
+  audienceQuestion: string;
+  knownClues: string[];
+  nextBeat: string;
+  status: WorldArcStatus;
+}
+
+export interface WorldTopic {
+  id: string;
+  name: string;
+  promise: string;
+}
+
+export interface WorldEpisode {
+  storyId: string;
+  title: string;
+  duration: number;
+  characterIds: string[];
+  placeIds: string[];
+  toolIds: string[];
+  outfitIds: string[];
+  arcIds: string[];
+  topicIds: string[];
+  hook: string;
+  continuityNote: string;
+  status: "planned" | "written" | "generated" | "published";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorldMediaVersion {
+  id: string;
+  label: string;
+  kind: WorldMediaKind;
+  version: number;
+  relativePath: string;
+  sha256: string;
+  sourceStoryId: string | null;
+  sourceEntityIds: string[];
+  supersedes: string | null;
+  tracked: boolean;
+  createdAt: string;
+}
+
+export interface WorldDatabase {
+  schemaVersion: number;
+  revision: number;
+  id: string;
+  name: string;
+  tagline: string;
+  premise: string;
+  updatedAt: string;
+  storyEngine: {
+    episodePromise: string;
+    connectionRule: string;
+    hookRule: string;
+    continuityRules: string[];
+  };
+  characters: WorldCharacter[];
+  places: WorldPlace[];
+  tools: WorldTool[];
+  outfits: WorldOutfit[];
+  arcs: WorldArc[];
+  topics: WorldTopic[];
+  episodes: WorldEpisode[];
+  media: WorldMediaVersion[];
+}
+
+export interface WorldStoryPlan {
+  title: string;
+  duration: number;
+  idea: string;
+  characterIds: string[];
+  placeIds: string[];
+  toolIds: string[];
+  outfitIds: string[];
+  arcIds: string[];
+  topicIds: string[];
+  hook: string;
+}
+
 export interface BootstrapData {
   stories: StorySummary[];
   assets: AssetDefinition[];
@@ -146,6 +280,7 @@ export interface BootstrapData {
   jobs: StudioJob[];
   models: ModelProfile[];
   status: ServiceStatus;
+  world: WorldDatabase;
   defaults: {
     video: VideoSettings;
     platforms: string[];

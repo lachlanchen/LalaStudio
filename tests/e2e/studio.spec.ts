@@ -39,6 +39,16 @@ test("opens production controls", async ({ page }, testInfo) => {
   });
 });
 
+test("opens the world atlas and connected episode planner", async ({ page }, testInfo) => {
+  await page.goto("/");
+  await page.getByTestId("nav-world").click();
+  await expect(page.getByTestId("world-workspace")).toBeVisible();
+  await expect(page.getByText("云港万象", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("world-plan-title")).toHaveValue("蓝尾纸鸟借走的路");
+  await expect(page.getByTestId("world-create-story")).toBeEnabled();
+  await page.screenshot({ path: `.playwright/${testInfo.project.name}-world.png`, fullPage: true });
+});
+
 test("opens a matching generated video in the default preview modal", async ({ page }) => {
   await page.route("**/api/bootstrap", async (route) => {
     const response = await route.fetch();

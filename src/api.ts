@@ -1,4 +1,4 @@
-import type { AiConversationTurn, BootstrapData, StoryAiAction, StoryDocument, StudioJob, VideoSettings } from "./types";
+import type { AiConversationTurn, BootstrapData, StoryAiAction, StoryDocument, StudioJob, VideoSettings, WorldDatabase, WorldStoryPlan } from "./types";
 
 async function request<T>(route: string, options?: RequestInit): Promise<T> {
   const response = await fetch(route, {
@@ -31,6 +31,7 @@ export const api = {
     duration?: number;
     effort?: string;
     history?: AiConversationTurn[];
+    storyId?: string;
   }) =>
     request<StudioJob>("/api/ai/jobs", {
       method: "POST",
@@ -71,5 +72,21 @@ export const api = {
   jobs: () => request<{ jobs: StudioJob[] }>("/api/jobs"),
   job: (id: string) => request<StudioJob>(`/api/jobs/${encodeURIComponent(id)}`),
   cancelJob: (id: string) => request<StudioJob>(`/api/jobs/${encodeURIComponent(id)}/cancel`, { method: "POST", body: "{}" }),
-  openBrowser: () => request<{ started: boolean; detail: string }>("/api/browser/open", { method: "POST", body: "{}" })
+  openBrowser: () => request<{ started: boolean; detail: string }>("/api/browser/open", { method: "POST", body: "{}" }),
+  world: () => request<WorldDatabase>("/api/world"),
+  updateWorldEntity: (collection: string, id: string, patch: Record<string, unknown>) =>
+    request<WorldDatabase>(`/api/world/entities/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(patch)
+    }),
+  addWorldEntity: (collection: string, entity: Record<string, unknown>) =>
+    request<WorldDatabase>(`/api/world/entities/${encodeURIComponent(collection)}`, {
+      method: "POST",
+      body: JSON.stringify(entity)
+    }),
+  createWorldStory: (plan: WorldStoryPlan) =>
+    request<{ story: StoryDocument; world: WorldDatabase }>("/api/world/story-plans", {
+      method: "POST",
+      body: JSON.stringify(plan)
+    })
 };

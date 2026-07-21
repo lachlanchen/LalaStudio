@@ -30,8 +30,10 @@ import {
   startVideoWorkflow,
   systemStatus
 } from "./workflows.js";
+import { WorldRepository, type WorldEntityCollection } from "./world-repository.js";
 
 const storyRepository = new StoryRepository();
+const worldRepository = new WorldRepository();
 export const jobs = new JobStore(runtimeRoot);
 
 const asyncRoute =
@@ -49,7 +51,8 @@ const aiSchema = z.object({
   history: z.array(z.object({
     role: z.enum(["user", "assistant"]),
     content: z.string().min(1).max(20_000)
-  })).max(10).optional()
+  })).max(10).optional(),
+  storyId: z.string().min(1).max(160).optional()
 });
 
 const wordCardSchema = z.object({
@@ -72,6 +75,21 @@ const videoSettingsSchema = z.object({
   sceneImageAssetIds: z.array(z.string()).max(12).default([])
 });
 
+const worldPlanSchema = z.object({
+  title: z.string().min(1).max(160),
+  duration: z.number().int().min(5).max(180),
+  idea: z.string().min(1).max(8000),
+  characterIds: z.array(z.string()).min(1).max(12),
+  placeIds: z.array(z.string()).min(1).max(8),
+  toolIds: z.array(z.string()).max(12),
+  outfitIds: z.array(z.string()).max(12),
+  arcIds: z.array(z.string()).max(8),
+  topicIds: z.array(z.string()).max(12),
+  hook: z.string().max(1000)
+});
+
+const worldCollections = new Set<WorldEntityCollection>(["characters", "places", "tools", "outfits", "arcs", "topics"]);
+
 export function createApp() {
   const app = express();
   app.disable("x-powered-by");
@@ -90,6 +108,7 @@ export function createApp() {
         videos: listVideos().slice(0, 80),
         jobs: jobs.list().slice(0, 40),
         models: Object.values(modelProfiles),
+        world: worldRepository.get(),
         status: await systemStatus(),
         defaults: {
           video: {
@@ -128,7 +147,33 @@ export function createApp() {
   });
   app.put("/api/stories/:id", (req, res) => {
     const parsed = z.object({ content: z.string().min(1).max(40000) }).parse(req.body);
-    res.json(storyRepository.save(req.params.id, parsed.content));
+    const story = storyRepository.save(req.params.id, parsed.content);
+    worldRepository.markStory(story);
+    res.json(story);
+  });
+
+  app.get("/api/world", (_req, res) => res.json(worldRepository.get()));
+  app.put("/api/world/entities/:collection/:id", (req, res) => {
+    const collection = req.params.collection as WorldEntityCollection;
+    if (!worldCollections.has(collection)) return res.status(404).json({ error: "Unsupported world entity collection" });
+    const patch = z.record(z.string(), z.unknown()).parse(req.body);
+    res.json(worldRepository.updateEntity(collection, req.params.id, patch));
+  });
+  app.post("/api/world/entities/:collection", (req, res) => {
+    const collection = req.params.collection as WorldEntityCollection;
+    if (!worldCollections.has(collection)) return res.status(404).json({ error: "Unsupported world entity collection" });
+    const entity = z.record(z.string(), z.unknown()).and(z.object({ id: z.string().min(1).max(160) })).parse(req.body);
+    res.status(201).json(worldRepository.addEntity(collection, entity));
+  });
+  app.post("/api/world/story-plans", (req, res) => {
+    const plan = worldPlanSchema.parse(req.body);
+    const result = worldRepository.createStoryFromPlan(plan, storyRepository);
+    res.status(201).json(result);
+  });
+  app.put("/api/world/episodes/:storyId", (req, res) => {
+    const story = storyRepository.get(req.params.storyId);
+    const plan = worldPlanSchema.omit({ title: true, idea: true }).parse(req.body);
+    res.json(worldRepository.linkEpisode(story, plan));
   });
 
   app.get("/api/assets", (_req, res) => res.json({ assets: listAssets() }));
@@ -165,6 +210,7 @@ export function createApp() {
 
   app.post("/api/ai/jobs", (req, res) => {
     const input = aiSchema.parse(req.body);
+    const worldContext = worldRepository.contextForStory(input.storyId);
     const routeMap: Record<typeof input.action, ModelRoute> = {
       chat: "chat",
       draft: "draft",
@@ -186,7 +232,8 @@ export function createApp() {
             message: input.message,
             story: input.story,
             duration: input.duration || 15,
-            history: input.history
+            history: input.history,
+            worldContext
           },
           {
             profiles: {
@@ -216,7 +263,8 @@ export function createApp() {
           message: input.message,
           story: input.story,
           duration: input.duration,
-          history: input.history
+          history: input.history,
+          worldContext
         }),
         sandbox: "read-only",
         ignoreRepositoryRules: true,
@@ -235,7 +283,12 @@ export function createApp() {
       .object({ storyId: z.string().min(1), settings: videoSettingsSchema, save: z.boolean().optional() })
       .parse(req.body);
     const story = storyRepository.get(parsed.storyId);
-    const prompt = buildVideoPrompt({ story: story.content, assets: listAssets(), settings: parsed.settings as VideoSettings });
+    const prompt = buildVideoPrompt({
+      story: story.content,
+      assets: listAssets(),
+      settings: parsed.settings as VideoSettings,
+      worldContinuity: worldRepository.promptContinuityForStory(parsed.storyId)
+    });
     const issues = validateVideoPrompt(prompt);
     const saved = parsed.save && issues.length === 0 ? storyRepository.savePrompt(parsed.storyId, prompt) : null;
     res.json({ prompt, issues, savedStory: saved });
@@ -270,7 +323,8 @@ export function createApp() {
       operation: parsed.operation,
       paidActionConfirmed: parsed.paidActionConfirmed,
       existingVideoPath,
-      forceRegenerate: parsed.forceRegenerate
+      forceRegenerate: parsed.forceRegenerate,
+      onArtifacts: (artifacts) => worldRepository.registerArtifacts({ storyId: parsed.storyId, ...artifacts })
     });
     res.status(202).json(job);
   });
@@ -284,7 +338,8 @@ export function createApp() {
       jobs,
       storyId: parsed.storyId,
       story: story.content,
-      settings: parsed.settings as VideoSettings
+      settings: parsed.settings as VideoSettings,
+      onArtifacts: (artifacts) => worldRepository.registerArtifacts({ storyId: parsed.storyId, ...artifacts })
     });
     res.status(202).json(job);
   });

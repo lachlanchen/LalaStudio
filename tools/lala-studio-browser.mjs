@@ -110,7 +110,7 @@ async function readStatus(page) {
 }
 
 async function ensureView(page, view) {
-  if (!["write", "prompt", "produce", "publish", "runs"].includes(view)) throw new Error(`Unsupported view: ${view}`);
+  if (!["write", "world", "prompt", "produce", "publish", "runs"].includes(view)) throw new Error(`Unsupported view: ${view}`);
   const app = page.getByTestId("lala-studio-app");
   if (await app.getAttribute("data-active-view") === view) return;
   await page.getByTestId(`nav-${view}`).click();
@@ -158,6 +158,31 @@ async function createStory(page, title, duration) {
     title: await page.getByTestId("story-title").innerText(),
     duration
   };
+}
+
+async function createWorldStory(page, options) {
+  const duration = numeric(options, "duration", 15);
+  if (![15, 30, 60].includes(duration)) throw new Error("World story duration must be 15, 30, or 60 seconds");
+  await ensureView(page, "world");
+  await page.getByTestId("world-plan-title").fill(required(options, "title"));
+  await page.getByTestId("world-plan-idea").fill(messageOption(options));
+  await page.getByTestId(`world-plan-duration-${duration}`).click();
+  if (options.place && options.place !== true) {
+    const values = String(options.place).split(",").map((item) => item.trim()).filter(Boolean);
+    await page.getByTestId("world-plan-place").selectOption(values);
+  }
+  if (options.arc !== undefined) {
+    await page.getByTestId("world-plan-arc").selectOption(options.arc === true ? "" : String(options.arc));
+  }
+  if (options.hook && options.hook !== true) await page.getByTestId("world-plan-hook").fill(String(options.hook));
+  await page.getByTestId("world-create-story").click();
+  await page.waitForFunction((title) => {
+    const app = document.querySelector('[data-testid="lala-studio-app"]');
+    return app?.getAttribute("data-active-view") === "write"
+      && document.querySelector('[data-testid="story-title"]')?.textContent?.trim() === title;
+  }, required(options, "title"), { timeout: 30_000 });
+  const selected = page.locator('[data-testid="story-row"].selected');
+  return { storyId: await selected.getAttribute("data-story-id"), title: await page.getByTestId("story-title").innerText(), duration };
 }
 
 async function sendChat(page, message, action = "chat") {
@@ -397,8 +422,9 @@ function usage() {
     `  status\n` +
     `  screenshot [--label NAME]\n` +
     `  reload\n` +
-    `  navigate --view write|prompt|produce|publish|runs\n` +
+    `  navigate --view write|world|prompt|produce|publish|runs\n` +
     `  create-story --title TEXT [--duration 15|30|60]\n` +
+    `  world-story --title TEXT (--message TEXT | --message-file PATH) [--duration 15|30|60] [--place id,id] [--arc ID] [--hook TEXT]\n` +
     `  select-story --match TEXT\n` +
     `  chat (--message TEXT | --message-file PATH) [--action chat|draft|review|final|refine] [--wait-seconds N]\n` +
     `  story-pipeline --title TEXT --message TEXT [--duration 15|30|60]\n` +
@@ -436,6 +462,7 @@ try {
     result = await readStatus(page);
   }
   else if (command === "create-story") result = await createStory(page, required(options, "title"), numeric(options, "duration", 15));
+  else if (command === "world-story") result = await createWorldStory(page, options);
   else if (command === "select-story") result = await selectStory(page, required(options, "match"));
   else if (command === "chat") result = await sendChat(page, messageOption(options), String(options.action || "chat"));
   else if (command === "story-pipeline") {

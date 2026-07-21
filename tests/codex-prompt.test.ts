@@ -47,4 +47,16 @@ describe("co-writer prompt contract", () => {
     expect(args).toContain("enable_mcp_apps");
     expect(args).toContain("danger-full-access");
   });
+
+  it("binds a selected episode to persistent world canon without turning it into exposition", () => {
+    const prompt = buildAiPrompt({
+      action: "draft",
+      message: "写今天的故事",
+      duration: 15,
+      worldContext: "World: 云港万象\nSelected places: 云港小屋\nOpen threads: 正在褪色的旅印"
+    });
+    expect(prompt).toContain("Persistent series canon for this episode");
+    expect(prompt).toContain("Selected places: 云港小屋");
+    expect(prompt).toContain("Do not dump it into exposition");
+  });
 });

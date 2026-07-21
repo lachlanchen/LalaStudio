@@ -21,6 +21,8 @@ describe("Studio API", () => {
     ]));
     expect(response.body.defaults.video).toMatchObject({ duration: 15, ratio: "4:3", preGenerateWordCard: true });
     expect(response.body.defaults.video.selectedAssetIds).not.toContain("trio");
+    expect(response.body.world).toMatchObject({ id: "cloud-harbor-world", name: "云港万象", schemaVersion: 1 });
+    expect(response.body.world.places.length).toBeGreaterThanOrEqual(5);
     expect(response.body.status.noVncUrl).toContain("/vnc.html?");
     expect(response.body.status.noVncUrl).toContain("resize=scale");
     expect(response.body.status.noVncUrl).not.toContain("vnc_lite.html");

@@ -5,6 +5,7 @@ import {
   Clapperboard,
   Command,
   FileCode2,
+  Globe2,
   LoaderCircle,
   Menu,
   Plus,
@@ -20,6 +21,7 @@ import { PublishWorkspace } from "./components/PublishWorkspace";
 import { RunsWorkspace } from "./components/RunsWorkspace";
 import { StoryWorkspace } from "./components/StoryWorkspace";
 import { VideoPreviewModal } from "./components/VideoPreviewModal";
+import { WorldWorkspace } from "./components/WorldWorkspace";
 import { buildConversationHistory, inferStoryAiAction } from "./story-chat";
 import { isProductionMessage, isPublishMessage, planDeliveryRequest, planProductionRequest } from "./video-chat";
 import type {
@@ -36,11 +38,14 @@ import type {
   StudioJob,
   VideoItem,
   VideoSettings,
+  WorldDatabase,
+  WorldStoryPlan,
   WorkspaceView
 } from "./types";
 
 const navItems: Array<{ id: WorkspaceView; label: string; icon: typeof BookOpenText }> = [
   { id: "write", label: "Write", icon: BookOpenText },
+  { id: "world", label: "World", icon: Globe2 },
   { id: "prompt", label: "Prompt", icon: FileCode2 },
   { id: "produce", label: "Produce", icon: Clapperboard },
   { id: "publish", label: "Publish", icon: Radio },
@@ -64,11 +69,13 @@ function App() {
   const [jobs, setJobs] = useState<StudioJob[]>([]);
   const [models, setModels] = useState<ModelProfile[]>([]);
   const [status, setStatus] = useState<ServiceStatus | null>(null);
+  const [world, setWorld] = useState<WorldDatabase | null>(null);
   const [view, setView] = useState<WorkspaceView>("write");
   const [story, setStory] = useState<StoryDocument | null>(null);
   const [content, setContent] = useState("");
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingWorld, setSavingWorld] = useState(false);
   const [query, setQuery] = useState("");
   const [prompt, setPrompt] = useState("");
   const [promptIssues, setPromptIssues] = useState<string[]>([]);
@@ -139,6 +146,7 @@ function App() {
         setJobs(data.jobs);
         setModels(data.models);
         setStatus(data.status);
+        setWorld(data.world);
         setVideoSettings(data.defaults.video);
         setPlatforms(data.defaults.platforms);
         setSelectedVideo(data.videos[0]?.id || "");
@@ -231,6 +239,11 @@ function App() {
       }
     }).catch(() => undefined);
   }, [activePublishJob, deliveryRequest, story]);
+
+  useEffect(() => {
+    const finished = [activeVideoJob, activeReferenceJob].some((job) => job && ["done", "failed", "cancelled"].includes(job.status));
+    if (finished) void api.world().then(setWorld).catch(() => undefined);
+  }, [activeVideoJob?.status, activeReferenceJob?.status]);
 
   useEffect(() => {
     if (!activeAiJob || !["done", "failed", "cancelled"].includes(activeAiJob.status)) return;
@@ -372,7 +385,7 @@ function App() {
     const history = buildConversationHistory(chatByStory[story.id] || []);
     appendChat(story.id, { role: "user", content: message, kind: "text" });
     try {
-      const job = await api.aiJob({ action, message, story: content, duration: story?.duration || 15, effort, history });
+      const job = await api.aiJob({ action, message, story: content, duration: story?.duration || 15, effort, history, storyId: story.id });
       setJobs((current) => [job, ...current]);
       setActiveAiJobId(job.id);
       aiJobContext.current.set(job.id, { storyId: story.id, action });
@@ -499,9 +512,55 @@ function App() {
     }
   };
 
+  const updateWorldEntity = async (collection: "characters" | "places" | "tools" | "outfits" | "arcs" | "topics", id: string, patch: Record<string, unknown>) => {
+    setSavingWorld(true);
+    try {
+      setWorld(await api.updateWorldEntity(collection, id, patch));
+      notify("World record saved as a new revision");
+    } catch (error) {
+      notify(error instanceof Error ? error.message : String(error));
+      throw error;
+    } finally {
+      setSavingWorld(false);
+    }
+  };
+
+  const addWorldEntity = async (collection: "characters" | "places" | "tools" | "outfits" | "arcs" | "topics", entity: Record<string, unknown>) => {
+    setSavingWorld(true);
+    try {
+      setWorld(await api.addWorldEntity(collection, entity));
+      notify("World record created");
+    } catch (error) {
+      notify(error instanceof Error ? error.message : String(error));
+      throw error;
+    } finally {
+      setSavingWorld(false);
+    }
+  };
+
+  const createConnectedStory = async (plan: WorldStoryPlan) => {
+    setSavingWorld(true);
+    try {
+      const result = await api.createWorldStory(plan);
+      setWorld(result.world);
+      setStories((current) => [result.story, ...current.filter((item) => item.id !== result.story.id)]);
+      await selectStory(result.story.id);
+      setView("write");
+      notify("Connected story created; world context is now active in the writer");
+    } catch (error) {
+      notify(error instanceof Error ? error.message : String(error));
+      throw error;
+    } finally {
+      setSavingWorld(false);
+    }
+  };
+
   const appMain = useMemo(() => {
     if (view === "write") {
       return <StoryWorkspace story={story} content={content} dirty={dirty} saving={saving} models={models} activeAiJob={activeAiJob} activeVideoJob={activeVideoJob} activePublishJob={activePublishJob} messages={story ? chatByStory[story.id] || [] : []} productionRequest={productionRequest} deliveryRequest={deliveryRequest} video={storyVideo} onContent={(value) => { setContent(value); setDirty(value !== story?.content); }} onSave={saveStory} onAi={runAi} onApplyAi={(value) => { setContent(value); setDirty(value !== story?.content); }} onProductionAction={runChatProduction} onDeliveryAction={runChatDelivery} onPreviewVideo={() => storyVideo && setPreviewVideoId(storyVideo.id)} />;
+    }
+    if (view === "world" && world) {
+      return <WorldWorkspace world={world} story={story} saving={savingWorld} onUpdateEntity={updateWorldEntity} onAddEntity={addWorldEntity} onCreateStory={createConnectedStory} />;
     }
     if (view === "prompt" && videoSettings) {
       return <PromptWorkspace story={story} assets={assets} settings={videoSettings} prompt={prompt} issues={promptIssues} building={buildingPrompt} onBuild={buildPrompt} onPrompt={setPrompt} onCopy={() => { void navigator.clipboard.writeText(prompt); notify("Prompt copied"); }} />;
@@ -513,12 +572,12 @@ function App() {
       return <PublishWorkspace story={story} videos={videos} selectedVideo={selectedVideo} title={publishTitle} platforms={platforms} category={category} activeJob={activePublishJob} onVideo={setSelectedVideo} onTitle={setPublishTitle} onPlatforms={setPlatforms} onCategory={setCategory} onRun={runPublish} onPreview={(video) => setPreviewVideoId(video.id)} />;
     }
     return <RunsWorkspace jobs={jobs} selectedId={selectedRunId} onSelect={setSelectedRunId} onCancel={cancelJob} />;
-  }, [view, story, storyVideo, content, dirty, saving, models, activeAiJob, activeVideoJob, activePublishJob, activeReferenceJob, chatByStory, productionRequest, deliveryRequest, videoSettings, assets, prompt, promptIssues, buildingPrompt, status, videos, selectedVideo, publishTitle, platforms, category, jobs, selectedRunId, buildPrompt]);
+  }, [view, story, storyVideo, content, dirty, saving, savingWorld, world, models, activeAiJob, activeVideoJob, activePublishJob, activeReferenceJob, chatByStory, productionRequest, deliveryRequest, videoSettings, assets, prompt, promptIssues, buildingPrompt, status, videos, selectedVideo, publishTitle, platforms, category, jobs, selectedRunId, buildPrompt]);
 
   if (fatalError) {
     return <div className="fatal-screen"><Aperture size={30} /><h1>Lala Studio could not start</h1><p>{fatalError}</p><code>npm run dev</code></div>;
   }
-  if (!boot || !videoSettings) {
+  if (!boot || !videoSettings || !world) {
     return <div className="loading-screen"><LoaderCircle className="spin" size={26} /><strong>Opening Lala Studio</strong><span>Loading stories and production services…</span></div>;
   }
 
@@ -564,7 +623,7 @@ function App() {
           <button className="new-story-nav" data-testid="new-story-open" onClick={() => setNewStoryOpen(true)}><Plus size={18} /><span>New story</span></button>
         </nav>
 
-        {view !== "runs" && <LibraryPanel stories={stories} selectedId={story?.id || null} query={query} onQuery={setQuery} onSelect={selectStory} onCreate={() => setNewStoryOpen(true)} />}
+        {view !== "runs" && view !== "world" && <LibraryPanel stories={stories} selectedId={story?.id || null} query={query} onQuery={setQuery} onSelect={selectStory} onCreate={() => setNewStoryOpen(true)} />}
         {appMain}
       </div>
 

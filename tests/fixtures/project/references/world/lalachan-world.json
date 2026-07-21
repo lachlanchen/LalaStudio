@@ -1,0 +1,260 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+  "id": "cloud-harbor-world",
+  "name": "云港万象",
+  "tagline": "四个伙伴从一间云边小屋出发，把每次迷路都变成下一条路。",
+  "premise": "云港连接日常生活、森林、云海与远方。四个伙伴从熟悉的家出发，每集解决一个具体问题，也会留下一条通往下一次旅程的小线索。",
+  "updatedAt": "2026-07-21T05:15:42.536Z",
+  "storyEngine": {
+    "episodePromise": "每集先让观众看懂一个具体愿望或麻烦，再用人物行动完成笑点和温暖结局。",
+    "connectionRule": "每集复用至少一个熟悉地点、工具、衣服或人物关系。",
+    "hookRule": "本集问题先解决，结尾只留一个具体可见的小问题。",
+    "continuityRules": [
+      "四位主角身份稳定",
+      "对白自然简短",
+      "工具有用途也有限制",
+      "先看懂，再可爱"
+    ]
+  },
+  "characters": [
+    {
+      "id": "raraxia",
+      "name": "啦啦侠",
+      "role": "热心行动派",
+      "personality": "热情、勇敢、偶尔馋嘴。",
+      "voice": "说话直接、短、带一点憨厚。",
+      "visualRules": [
+        "保持 raraxia 单人参考图的身份、脸和体型"
+      ],
+      "relationshipNotes": [
+        "四位伙伴互相帮助，也允许自己被别人照顾"
+      ],
+      "defaultOutfitId": "daily-raraxia-v1",
+      "assetIds": [
+        "raraxia"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "ayachan",
+      "name": "阿芽酱",
+      "role": "观察细致的情感中心",
+      "personality": "温柔、细心、有主见。",
+      "voice": "自然、简洁、有生活感。",
+      "visualRules": [
+        "保持 ayachan 单人参考图的身份、脸和体型"
+      ],
+      "relationshipNotes": [
+        "四位伙伴互相帮助，也允许自己被别人照顾"
+      ],
+      "defaultOutfitId": "daily-ayachan-v1",
+      "assetIds": [
+        "ayachan"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "sasakun",
+      "name": "飒飒君",
+      "role": "速度与好奇心担当",
+      "personality": "灵活、爱尝试，笑点来自动作。",
+      "voice": "短促、兴奋、像朋友随口说话。",
+      "visualRules": [
+        "保持 sasakun 单人参考图的身份、脸和体型"
+      ],
+      "relationshipNotes": [
+        "四位伙伴互相帮助，也允许自己被别人照顾"
+      ],
+      "defaultOutfitId": "daily-sasakun-v1",
+      "assetIds": [
+        "sasakun"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "zhuangzi",
+      "name": "庄子机器人",
+      "role": "可靠的第四位伙伴",
+      "personality": "冷静、实用、偶尔一本正经地好笑。",
+      "voice": "像朋友一样说普通话，不报系统日志。",
+      "visualRules": [
+        "保持 zhuangzi 单人参考图的身份、脸和体型"
+      ],
+      "relationshipNotes": [
+        "四位伙伴互相帮助，也允许自己被别人照顾"
+      ],
+      "defaultOutfitId": "zhuangzi-shell-v1",
+      "assetIds": [
+        "zhuangzi"
+      ],
+      "status": "active"
+    }
+  ],
+  "places": [
+    {
+      "id": "cloud-harbor-home",
+      "name": "云港小屋",
+      "role": "共同生活的家",
+      "summary": "有厨房、工作桌、临云露台和风门月台的温暖木屋。",
+      "visualAnchors": [
+        "温暖木材",
+        "临云露台",
+        "四人长桌"
+      ],
+      "recurringUses": [
+        "做饭",
+        "修东西",
+        "出发与归来"
+      ],
+      "connectedPlaceIds": [
+        "star-bridge-market"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "star-bridge-market",
+      "name": "星桥集市",
+      "role": "食物、手艺和消息的交汇处",
+      "summary": "沿发光石桥铺开的市场，桥下有小星沿云河漂过。",
+      "visualAnchors": [
+        "发光石桥",
+        "木摊",
+        "云河"
+      ],
+      "recurringUses": [
+        "找食材",
+        "遇见邻居",
+        "发现线索"
+      ],
+      "connectedPlaceIds": [
+        "cloud-harbor-home"
+      ],
+      "status": "active"
+    }
+  ],
+  "tools": [
+    {
+      "id": "patchwork-notebook",
+      "name": "拼皮旅印笔记本",
+      "ownerIds": [
+        "raraxia",
+        "ayachan",
+        "sasakun",
+        "zhuangzi"
+      ],
+      "purpose": "保存地图和旅印",
+      "rule": "保留已经发现的线索，不凭空给答案。",
+      "limitation": "页面可能受风雨和褪色影响。",
+      "assetIds": [
+        "notebook"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "zhuangzi-toolbay",
+      "name": "庄子工具舱",
+      "ownerIds": [
+        "zhuangzi"
+      ],
+      "purpose": "展开一个清楚实用的小工具",
+      "rule": "每集最多突出一个主要功能。",
+      "limitation": "需要伙伴判断何时使用。",
+      "assetIds": [
+        "zhuangzi"
+      ],
+      "status": "active"
+    }
+  ],
+  "outfits": [
+    {
+      "id": "daily-raraxia-v1",
+      "name": "啦啦侠日常外观 v1",
+      "characterIds": [
+        "raraxia"
+      ],
+      "use": "日常与普通旅行",
+      "visualRules": [
+        "保持 raraxia 单人参考图的身份、脸和体型"
+      ],
+      "assetIds": [
+        "raraxia"
+      ],
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "daily-ayachan-v1",
+      "name": "阿芽酱日常外观 v1",
+      "characterIds": [
+        "ayachan"
+      ],
+      "use": "日常与普通旅行",
+      "visualRules": [
+        "保持 ayachan 单人参考图的身份、脸和体型"
+      ],
+      "assetIds": [
+        "ayachan"
+      ],
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "daily-sasakun-v1",
+      "name": "飒飒君日常外观 v1",
+      "characterIds": [
+        "sasakun"
+      ],
+      "use": "日常与普通旅行",
+      "visualRules": [
+        "保持 sasakun 单人参考图的身份、脸和体型"
+      ],
+      "assetIds": [
+        "sasakun"
+      ],
+      "version": 1,
+      "status": "active"
+    },
+    {
+      "id": "zhuangzi-shell-v1",
+      "name": "庄子机器人日常外观 v1",
+      "characterIds": [
+        "zhuangzi"
+      ],
+      "use": "日常与普通旅行",
+      "visualRules": [
+        "保持 zhuangzi 单人参考图的身份、脸和体型"
+      ],
+      "assetIds": [
+        "zhuangzi"
+      ],
+      "version": 1,
+      "status": "active"
+    }
+  ],
+  "arcs": [
+    {
+      "id": "fading-journey-marks",
+      "name": "正在褪色的旅印",
+      "premise": "旧旅印开始褪色。",
+      "audienceQuestion": "哪条回家路会先消失？",
+      "knownClues": [],
+      "nextBeat": "一只蓝尾纸鸟带来陌生灯塔的线索。",
+      "status": "open"
+    }
+  ],
+  "topics": [
+    {
+      "id": "friendship",
+      "name": "四人伙伴关系",
+      "promise": "每个人都能帮忙，也都可以被照顾。"
+    },
+    {
+      "id": "mystery",
+      "name": "下一扇门",
+      "promise": "结尾留下一个清楚的下一集问题。"
+    }
+  ],
+  "episodes": [],
+  "media": []
+}

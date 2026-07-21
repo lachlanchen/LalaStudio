@@ -57,4 +57,16 @@ describe("Xiaoyunque prompt builder", () => {
     expect(twoCharacterPrompt).not.toContain("飒飒君严格参考");
     expect(validateVideoPrompt(twoCharacterPrompt)).toEqual([]);
   });
+
+  it("adds only the compact selected continuity contract", () => {
+    const prompt = buildVideoPrompt({
+      story: "# 借走的路\n\n蓝尾纸鸟叼走地图，伙伴们追到星桥。",
+      assets: listAssets(),
+      settings,
+      worldContinuity: "固定地点：云港小屋、星桥集市。\n连续线索：正在褪色的旅印；只在结尾出现蓝灯塔。"
+    });
+    expect(prompt).toContain("## 世界连续性");
+    expect(prompt).toContain("固定地点：云港小屋、星桥集市");
+    expect(validateVideoPrompt(prompt)).toEqual([]);
+  });
 });

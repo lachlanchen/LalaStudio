@@ -111,6 +111,7 @@ export function buildAiPrompt(input: {
   story?: string;
   duration?: number;
   history?: AiConversationTurn[];
+  worldContext?: string;
 }): string {
   const duration = input.duration || 15;
   const dialogueLimit = duration <= 15 ? 4 : duration <= 30 ? 7 : 12;
@@ -134,21 +135,24 @@ Story standard:
 - Word-card entries must express the same episode word and be correctly written in every listed language or script. Validate all entries equally.
 `.trim();
   const conversation = conversationContext(input.history);
+  const world = input.worldContext?.trim()
+    ? `Persistent series canon for this episode:\n${input.worldContext.trim()}\n\nTreat this canon as binding. Do not dump it into exposition; reveal only what the current action needs.`
+    : "";
   const editor = input.story?.trim()
     ? `Current editor draft:\n${input.story.trim()}`
     : "Current editor draft: empty.";
 
   if (input.action === "chat") {
-    return `${shared}\n\nAnswer the user's question directly and concisely. If the user asks for a story change, return a complete save-ready story rather than only describing the change.\n\n${editor}\n\n${conversation}\n\nCurrent user request:\n${input.message}`;
+    return `${shared}\n\nAnswer the user's question directly and concisely. If the user asks for a story change, return a complete save-ready story rather than only describing the change.\n\n${world}\n\n${editor}\n\n${conversation}\n\nCurrent user request:\n${input.message}`;
   }
 
   if (input.action === "draft") {
-    return `${shared}\n\nCreate a polished ${duration}-second story from this idea. Silently reread the first draft once, then return one complete save-ready Markdown document. Use this exact structure: # title; a line stating ${duration} 秒中文短片; ## 故事 with natural dialogue inside the story; ## 对应词卡 with English, Japanese, Furigana, and 中文 fields using a real theme word. The word card is required document metadata outside the story, not dialogue or prompt leakage. Do not wrap the document in a code fence.\n\n${editor}\n\n${conversation}\n\nCurrent writing request:\n${input.message}`;
+    return `${shared}\n\nCreate a polished ${duration}-second story from this idea. Silently reread the first draft once, then return one complete save-ready Markdown document. Use this exact structure: # title; a line stating ${duration} 秒中文短片; ## 故事 with natural dialogue inside the story; ## 对应词卡 with English, Japanese, Furigana, and 中文 fields using a real theme word. The word card is required document metadata outside the story, not dialogue or prompt leakage. Do not wrap the document in a code fence.\n\n${world}\n\n${editor}\n\n${conversation}\n\nCurrent writing request:\n${input.message}`;
   }
 
   if (input.action === "review") {
-    return `${shared}\n\nCritique the exact weak lines in the draft. Return: Problems, concrete fixes, and a revised story. Focus on clarity, causality, natural dialogue, visual comedy, and shareability.\n\n${editor}\n\n${conversation}\n\nCurrent review request:\n${input.message}`;
+    return `${shared}\n\nCritique the exact weak lines in the draft. Return: Problems, concrete fixes, and a revised story. Focus on clarity, causality, natural dialogue, visual comedy, shareability, and continuity with the selected world records.\n\n${world}\n\n${editor}\n\n${conversation}\n\nCurrent review request:\n${input.message}`;
   }
 
-  return `${shared}\n\nProduce the final publishable ${duration}-second story. Silently reread it once for clarity and natural speech before answering. Return one complete save-ready Markdown document, not commentary. Keep or repair this structure: # title; a line stating ${duration} 秒中文短片; ## 故事 with dialogue naturally embedded; ## 对应词卡 with English, Japanese, Furigana, and 中文 fields. The word card is required document metadata outside the story, not dialogue or prompt leakage. Preserve an existing suitable word card, or choose one real theme word if it is absent. Do not wrap the document in a code fence and do not add analysis or prompt-engineering notes.\n\n${editor}\n\n${conversation}\n\nCurrent revision request:\n${input.message}`;
+  return `${shared}\n\nProduce the final publishable ${duration}-second story. Silently reread it once for clarity and natural speech before answering. Return one complete save-ready Markdown document, not commentary. Keep or repair this structure: # title; a line stating ${duration} 秒中文短片; ## 故事 with dialogue naturally embedded; ## 对应词卡 with English, Japanese, Furigana, and 中文 fields. The word card is required document metadata outside the story, not dialogue or prompt leakage. Preserve an existing suitable word card, or choose one real theme word if it is absent. Do not wrap the document in a code fence and do not add analysis or prompt-engineering notes.\n\n${world}\n\n${editor}\n\n${conversation}\n\nCurrent revision request:\n${input.message}`;
 }

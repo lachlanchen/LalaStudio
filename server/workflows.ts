@@ -209,6 +209,7 @@ export function startReferenceImageWorkflow(input: {
   storyId: string;
   story: string;
   settings: VideoSettings;
+  onArtifacts?: (artifacts: { wordCardPath?: string | null; sceneImagePath?: string | null }) => void;
 }): StudioJob {
   const profile = resolveModelProfile("workflow");
   const assetPaths = input.settings.selectedAssetIds.map(getAssetPath);
@@ -240,6 +241,7 @@ export function startReferenceImageWorkflow(input: {
     progress(88, "Validating generated PNG files");
     const probes = validateReferenceAssets(plan);
     commitReferenceAssetManifest(plan);
+    input.onArtifacts?.({ wordCardPath: plan.wordCardPath, sceneImagePath: plan.sceneImagePath });
     log(`Reference image fingerprint: ${plan.fingerprint}`);
     return {
       storyId: plan.storyId,
@@ -265,6 +267,7 @@ export function startVideoWorkflow(input: {
   paidActionConfirmed: boolean;
   existingVideoPath?: string | null;
   forceRegenerate?: boolean;
+  onArtifacts?: (artifacts: { wordCardPath?: string | null; sceneImagePath?: string | null; videoPath?: string | null }) => void;
 }): StudioJob {
   if (input.operation === "generate" && !input.paidActionConfirmed) {
     throw new Error("Paid generation requires explicit confirmation");
@@ -288,6 +291,11 @@ export function startVideoWorkflow(input: {
       if (existing) {
         log(`Existing download verified: ${input.existingVideoPath} (${existing.duration.toFixed(2)}s, ${existing.width}x${existing.height})`);
         progress(98, "Reusing the verified downloaded video; no paid generation was submitted");
+        input.onArtifacts?.({
+          wordCardPath: referencePlan.wordCardPath,
+          sceneImagePath: referencePlan.sceneImagePath,
+          videoPath: input.existingVideoPath
+        });
         return { reused: true, videoPath: input.existingVideoPath, probe: existing, runDir, promptPath };
       }
     }
@@ -327,13 +335,22 @@ export function startVideoWorkflow(input: {
       referenceAssets = validateReferenceAssets(referencePlan);
       commitReferenceAssetManifest(referencePlan);
     }
+    const downloaded = input.operation === "generate"
+      ? listVideos().find((item) => item.name === `${input.storyId}.mp4` || item.name.includes(input.storyId))?.path || null
+      : null;
+    input.onArtifacts?.({
+      wordCardPath: referencePlan.wordCardPath,
+      sceneImagePath: referencePlan.sceneImagePath,
+      videoPath: downloaded
+    });
     return {
       report: result,
       runDir,
       promptPath,
       referenceAssets,
       wordCardUrl: referencePlan.wordCardUrl,
-      sceneImageUrl: referencePlan.sceneImageUrl
+      sceneImageUrl: referencePlan.sceneImageUrl,
+      videoPath: downloaded
     };
   });
   return job;

@@ -18,6 +18,7 @@ export function buildVideoPrompt(input: {
   story: string;
   assets: AssetDefinition[];
   settings: VideoSettings;
+  worldContinuity?: string;
 }): string {
   const selected = input.settings.selectedAssetIds
     .map((id) => input.assets.find((asset) => asset.id === id))
@@ -55,6 +56,8 @@ ${sceneImageLabel ? `\n${sceneImageLabel}是本集场景参考，不替代人物
 ## 故事
 
 ${storyBody(input.story)}
+
+${input.worldContinuity?.trim() ? `## 世界连续性\n\n${input.worldContinuity.trim()}\n` : ""}
 
 人物说话要像朋友正常聊天，动作清楚，事件有明确因果。不要字幕，不要生成说明文字或下三分之一文字。不要把文件名或本地路径画进视频。
 `;

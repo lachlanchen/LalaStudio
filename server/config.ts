@@ -24,6 +24,7 @@ export const repoRoot = process.env.LALA_STUDIO_PROJECT_ROOT
 export const runtimeRoot = path.join(repoRoot, ".lalastudio");
 export const storiesRoot = path.join(repoRoot, "references", "stories");
 export const promptsRoot = path.join(repoRoot, "references", "prompts");
+export const worldRoot = path.join(repoRoot, "references", "world");
 export const videosRoot = path.join(repoRoot, "Videos");
 
 dotenv.config({ path: path.join(repoRoot, ".env"), quiet: true });
