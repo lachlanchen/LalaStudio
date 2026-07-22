@@ -53,6 +53,8 @@ ${identityLines.join("\n")}
 ${wordCard}
 ${sceneImageLabel ? `\n${sceneImageLabel}是本集场景参考，不替代人物身份图。人物外观仍以各自单人参考图为准。` : ""}
 
+画面中只出现故事明确点名的角色。不要新增故事中没有出现的路人、村民或其他手办，也不要复制或替换任何主角。
+
 ## 故事
 
 ${storyBody(input.story)}

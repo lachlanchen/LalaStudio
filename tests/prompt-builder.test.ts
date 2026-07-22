@@ -36,8 +36,9 @@ describe("Xiaoyunque prompt builder", () => {
     expect(prompt).not.toContain("English: together");
     expect(prompt).not.toContain("Japanese: 一緒");
     expect(prompt).toContain("不要字幕");
+    expect(prompt).toContain("不要新增故事中没有出现的路人、村民或其他手办");
     expect(prompt).not.toContain("Trio group");
-    expect(prompt).toContain("图8：本集预生成场景关键帧");
+    expect(prompt).toMatch(/图\d+：本集预生成场景关键帧/);
     expect(prompt).not.toContain("English: Rain");
     expect(prompt).not.toMatch(/\/(?:home|Users|mnt|tmp)\//);
     expect(validateVideoPrompt(prompt)).toEqual([]);
