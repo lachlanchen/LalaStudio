@@ -95,6 +95,27 @@ node tools/lala-studio-browser.mjs delivery \
 
 The controller manipulates the visible webapp through Playwright/CDP and saves evidence under `.runtime/browser-evidence/`. Studio itself ensures the separate Xiaoyunque desktop at noVNC port `6099`; the Studio desktop remains on `6116`. See [World Bible and Media Versioning](docs/world-bible-and-media-versioning.md), [Story Refinement Pipeline](docs/story-refinement-pipeline.md), and [Isolated noVNC Browser Control](docs/novnc-browser-control.md) for the continuity, writing, chat-to-video, and delivery contracts.
 
+## Project-local References
+
+Episode-specific images can be added without changing Studio source. Create the ignored file `.lalastudio/assets.json` in the active media project:
+
+```json
+{
+  "assets": [
+    {
+      "id": "guest-character",
+      "label": "Guest character",
+      "role": "Identity reference for this episode",
+      "relativePath": "artifacts/images/guest-character.png",
+      "required": true,
+      "defaultSelected": true
+    }
+  ]
+}
+```
+
+Paths must be relative to the project root and may not escape it. Configure visible production controls reproducibly with `node tools/lala-studio-browser.mjs configure-production --help`.
+
 ## Validate
 
 ```bash

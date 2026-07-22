@@ -356,6 +356,73 @@ async function rebuildProductionPrompt(page) {
   await button.waitFor({ state: "visible", timeout: 30_000 });
 }
 
+async function readProductionSettings(page) {
+  await ensureView(page, "produce");
+  return page.getByTestId("produce-workspace").evaluate((root) => {
+    const selectedAssetIds = [...root.querySelectorAll('[data-testid="asset-toggle"][data-selected="true"]')]
+      .map((element) => element.getAttribute("data-asset-id"))
+      .filter(Boolean);
+    const mode = root.querySelector('[data-testid^="mode-"].active')
+      ?.getAttribute("data-testid")
+      ?.replace("mode-", "") || null;
+    return {
+      mode,
+      model: root.querySelector('[data-testid="video-model"]')?.value || null,
+      duration: Number(root.querySelector('[data-testid="video-duration"]')?.value || 0),
+      ratio: root.querySelector('[data-testid^="ratio-"].active')?.textContent?.trim() || null,
+      selectedAssetIds,
+      promptReady: !root.querySelector('[data-testid="rebuild-prompt"]')?.hasAttribute("disabled")
+    };
+  });
+}
+
+async function configureProduction(page, options) {
+  await ensureView(page, "produce");
+  const mode = String(options.mode || "short");
+  if (!["short", "agent"].includes(mode)) throw new Error("--mode must be short or agent");
+  await page.getByTestId(`mode-${mode}`).click();
+
+  if (options.model) await page.getByTestId("video-model").selectOption({ label: String(options.model) });
+
+  if (options.duration !== undefined) {
+    const duration = numeric(options, "duration", 15);
+    const range = page.getByTestId("video-duration");
+    const limits = await range.evaluate((element) => ({ min: Number(element.min), max: Number(element.max) }));
+    if (!Number.isInteger(duration) || duration < limits.min || duration > limits.max) {
+      throw new Error(`--duration must be an integer from ${limits.min} to ${limits.max} for ${mode} mode`);
+    }
+    await range.evaluate((element, value) => {
+      const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+      descriptor?.set?.call(element, String(value));
+      element.dispatchEvent(new Event("input", { bubbles: true }));
+      element.dispatchEvent(new Event("change", { bubbles: true }));
+    }, duration);
+  }
+
+  if (options.ratio) {
+    const ratio = String(options.ratio);
+    if (!["4:3", "9:16", "16:9"].includes(ratio)) throw new Error("--ratio must be 4:3, 9:16, or 16:9");
+    await page.getByTestId(`ratio-${ratio.replace(":", "-")}`).click();
+  }
+
+  if (options.assets) await configureVideoAssets(page, String(options.assets));
+
+  await rebuildProductionPrompt(page);
+  const settings = await readProductionSettings(page);
+  if (settings.mode !== mode) throw new Error(`Mode verification failed: ${settings.mode}`);
+  if (options.model && settings.model !== String(options.model)) throw new Error(`Model verification failed: ${settings.model}`);
+  if (options.duration !== undefined && settings.duration !== numeric(options, "duration", 15)) throw new Error(`Duration verification failed: ${settings.duration}`);
+  if (options.ratio && settings.ratio !== String(options.ratio)) throw new Error(`Ratio verification failed: ${settings.ratio}`);
+  if (options.assets) {
+    const expected = String(options.assets).split(",").map((value) => value.trim()).filter(Boolean).sort();
+    const actual = [...settings.selectedAssetIds].sort();
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      throw new Error(`Asset verification failed: expected ${expected.join(", ")}; got ${actual.join(", ")}`);
+    }
+  }
+  return settings;
+}
+
 async function productionAction(page, operation, confirmPaid, sceneAssets = "", videoAssets = "") {
   if (!["inspect", "references", "prepare", "generate"].includes(operation)) throw new Error(`Unsupported production operation: ${operation}`);
   await ensureView(page, "produce");
@@ -431,6 +498,7 @@ function usage() {
     `  apply-last\n` +
     `  save\n` +
     `  cancel-active\n` +
+    `  configure-production [--mode short|agent] [--model NAME] [--duration N] [--ratio 4:3|9:16|16:9] [--assets id,id,...]\n` +
     `  production [--message TEXT | --message-file PATH] --operation inspect|references|prepare|generate [--video-assets id,id] [--scene-assets id,id] [--confirm-paid]\n` +
     `  delivery [--message TEXT | --message-file PATH] --operation inspect|publish [--confirm-publish]\n` +
     `  run --story-match TEXT --story-message TEXT [--action final] --production-message TEXT --operation inspect|references|prepare|generate [--confirm-paid]\n\n` +
@@ -480,6 +548,8 @@ try {
     result = { saved: true };
   } else if (command === "cancel-active") {
     result = await cancelActiveRun(page);
+  } else if (command === "configure-production") {
+    result = await configureProduction(page, options);
   } else if (command === "production") {
     if (options.message || options["message-file"]) await sendChat(page, messageOption(options), "chat");
     result = await productionAction(page, String(options.operation || "inspect"), Boolean(options["confirm-paid"]), String(options["scene-assets"] || ""), String(options["video-assets"] || ""));
