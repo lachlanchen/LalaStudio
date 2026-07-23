@@ -159,6 +159,7 @@ program
   .description("Prepare or generate a Xiaoyunque video")
   .option("--prompt <file>", "Prepared Xiaoyunque prompt; otherwise build it from the story")
   .option("--settings <json>", "Video settings JSON file; defaults to Studio settings")
+  .option("--effort <level>", "Workflow reasoning effort")
   .option("--confirm-paid", "Confirm one paid generation submit")
   .action(async (operation, storyId, options) => {
     if (!["prepare", "generate"].includes(operation)) throw new Error("operation must be prepare or generate");
@@ -172,6 +173,7 @@ program
       prompt: options.prompt ? fs.readFileSync(options.prompt, "utf8") : built!.prompt,
       settings,
       operation,
+      effort: options.effort,
       paidActionConfirmed: Boolean(options.confirmPaid)
     });
     console.log(job.id);

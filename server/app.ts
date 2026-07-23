@@ -301,6 +301,7 @@ export function createApp() {
         prompt: z.string().min(1).max(50000),
         settings: videoSettingsSchema,
         operation: z.enum(["prepare", "generate"]),
+        effort: z.enum(["low", "medium", "high", "xhigh", "max", "ultra"]).optional(),
         paidActionConfirmed: z.boolean().default(false),
         forceRegenerate: z.boolean().default(false)
       })
@@ -321,6 +322,7 @@ export function createApp() {
       prompt: parsed.prompt,
       settings: parsed.settings as VideoSettings,
       operation: parsed.operation,
+      effort: parsed.effort as ReasoningEffort | undefined,
       paidActionConfirmed: parsed.paidActionConfirmed,
       existingVideoPath,
       forceRegenerate: parsed.forceRegenerate,

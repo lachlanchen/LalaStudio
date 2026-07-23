@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
-import type { StudioJob, VideoSettings } from "./types.js";
+import type { ReasoningEffort, StudioJob, VideoSettings } from "./types.js";
 import { repoRoot, runtimeRoot, studioConfig, studioRoot, videosRoot } from "./config.js";
 import { getAssetPath } from "./assets.js";
 import { runCodex } from "./codex.js";
@@ -264,6 +264,7 @@ export function startVideoWorkflow(input: {
   prompt: string;
   settings: VideoSettings;
   operation: "prepare" | "generate";
+  effort?: ReasoningEffort;
   paidActionConfirmed: boolean;
   existingVideoPath?: string | null;
   forceRegenerate?: boolean;
@@ -272,7 +273,7 @@ export function startVideoWorkflow(input: {
   if (input.operation === "generate" && !input.paidActionConfirmed) {
     throw new Error("Paid generation requires explicit confirmation");
   }
-  const profile = resolveModelProfile("workflow");
+  const profile = resolveModelProfile("workflow", { effort: input.effort });
   const job = input.jobs.create({
     type: "video",
     title: `${input.operation === "prepare" ? "Prepare" : "Generate"} ${input.storyId}`,
