@@ -180,10 +180,10 @@ export function ProduceWorkspace({ story, assets, settings, prompt, issues, stat
               />
               <span><strong>Generate card with Codex first</strong><small>Use the reference design, verify the exact word, then upload the generated PNG.</small></span>
             </label>
-            <label>English<input value={settings.wordCard.english} onChange={(event) => onSettings({ ...settings, wordCard: { ...settings.wordCard, english: event.target.value } })} /></label>
-            <label>Japanese<input value={settings.wordCard.japanese} onChange={(event) => onSettings({ ...settings, wordCard: { ...settings.wordCard, japanese: event.target.value } })} /></label>
-            <label>Furigana<input value={settings.wordCard.furigana} onChange={(event) => onSettings({ ...settings, wordCard: { ...settings.wordCard, furigana: event.target.value } })} /></label>
-            <label>Chinese<input value={settings.wordCard.chinese} onChange={(event) => onSettings({ ...settings, wordCard: { ...settings.wordCard, chinese: event.target.value } })} /></label>
+            <label>English<input data-testid="word-card-english" value={settings.wordCard.english} onChange={(event) => onSettings({ ...settings, wordCard: { ...settings.wordCard, english: event.target.value } })} /></label>
+            <label>Japanese<input data-testid="word-card-japanese" value={settings.wordCard.japanese} onChange={(event) => onSettings({ ...settings, wordCard: { ...settings.wordCard, japanese: event.target.value } })} /></label>
+            <label>Furigana<input data-testid="word-card-furigana" value={settings.wordCard.furigana} onChange={(event) => onSettings({ ...settings, wordCard: { ...settings.wordCard, furigana: event.target.value } })} /></label>
+            <label>Chinese<input data-testid="word-card-chinese" value={settings.wordCard.chinese} onChange={(event) => onSettings({ ...settings, wordCard: { ...settings.wordCard, chinese: event.target.value } })} /></label>
           </div>
         )}
 

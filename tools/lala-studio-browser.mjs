@@ -299,12 +299,9 @@ async function configureSceneSources(page, csv) {
   if (!(await sceneGeneration.isChecked())) await sceneGeneration.check();
   const toggles = page.getByTestId("scene-source-toggle");
   await toggles.first().waitFor({ state: "visible", timeout: 30_000 });
-  const available = [];
-  for (let index = 0; index < await toggles.count(); index += 1) {
-    const toggle = toggles.nth(index);
-    const assetId = await toggle.getAttribute("data-asset-id");
-    if (!assetId) continue;
-    available.push(assetId);
+  const available = await toggles.evaluateAll((elements) => elements.map((element) => element.getAttribute("data-asset-id")).filter(Boolean));
+  for (const assetId of available) {
+    const toggle = page.locator(`[data-testid="scene-source-toggle"][data-asset-id="${assetId}"]`);
     const selected = await toggle.getAttribute("data-selected") === "true";
     if (selected !== requested.has(assetId)) await toggle.click();
   }
@@ -318,12 +315,9 @@ async function configureVideoAssets(page, csv) {
   if (!requested.size) throw new Error("--video-assets must select at least one reference");
   const toggles = page.getByTestId("asset-toggle");
   await toggles.first().waitFor({ state: "visible", timeout: 30_000 });
-  const available = [];
-  for (let index = 0; index < await toggles.count(); index += 1) {
-    const toggle = toggles.nth(index);
-    const assetId = await toggle.getAttribute("data-asset-id");
-    if (!assetId) continue;
-    available.push(assetId);
+  const available = await toggles.evaluateAll((elements) => elements.map((element) => element.getAttribute("data-asset-id")).filter(Boolean));
+  for (const assetId of available) {
+    const toggle = page.locator(`[data-testid="asset-toggle"][data-asset-id="${assetId}"]`);
     const selected = await toggle.getAttribute("data-selected") === "true";
     const desired = requested.has(assetId);
     if (selected !== desired) {
@@ -336,7 +330,43 @@ async function configureVideoAssets(page, csv) {
     }
   }
   const unknown = [...requested].filter((assetId) => !available.includes(assetId));
-  if (unknown.length) throw new Error(`Unknown video reference assets: ${unknown.join(", ")}`);
+  if (unknown.length) throw new Error(`Unknown video reference assets: ${unknown.join(", ")}; available: ${available.join(", ")}`);
+}
+
+async function setChecked(locator, checked) {
+  await locator.waitFor({ state: "visible", timeout: 30_000 });
+  if (checked && !(await locator.isChecked())) await locator.check();
+  if (!checked && await locator.isChecked()) await locator.uncheck();
+}
+
+async function configureReferenceBrief(page, options) {
+  const hasWordCard = ["word-en", "word-ja", "word-furigana", "word-zh"].some((name) => options[name] !== undefined);
+  const hasSceneBrief = options["scene-brief"] !== undefined || options["scene-brief-file"] !== undefined;
+
+  if (hasWordCard) {
+    const values = {
+      "word-card-english": required(options, "word-en"),
+      "word-card-japanese": required(options, "word-ja"),
+      "word-card-furigana": required(options, "word-furigana"),
+      "word-card-chinese": required(options, "word-zh")
+    };
+    await setChecked(page.getByTestId("pregenerate-word-card"), true);
+    for (const [testId, value] of Object.entries(values)) {
+      const input = page.getByTestId(testId);
+      await input.fill(value);
+      if (await input.inputValue() !== value) throw new Error(`Failed to set ${testId}`);
+    }
+  }
+
+  if (hasSceneBrief) {
+    const brief = options["scene-brief-file"] && options["scene-brief-file"] !== true
+      ? fs.readFileSync(path.resolve(String(options["scene-brief-file"])), "utf8").trim()
+      : required(options, "scene-brief");
+    await setChecked(page.getByTestId("pregenerate-scene-image"), true);
+    const textarea = page.getByTestId("scene-image-prompt");
+    await textarea.fill(brief);
+    if (await textarea.inputValue() !== brief) throw new Error("Scene brief verification failed");
+  }
 }
 
 async function rebuildProductionPrompt(page) {
@@ -371,6 +401,15 @@ async function readProductionSettings(page) {
       duration: Number(root.querySelector('[data-testid="video-duration"]')?.value || 0),
       ratio: root.querySelector('[data-testid^="ratio-"].active')?.textContent?.trim() || null,
       selectedAssetIds,
+      preGenerateWordCard: root.querySelector('[data-testid="pregenerate-word-card"]')?.checked || false,
+      wordCard: {
+        english: root.querySelector('[data-testid="word-card-english"]')?.value || "",
+        japanese: root.querySelector('[data-testid="word-card-japanese"]')?.value || "",
+        furigana: root.querySelector('[data-testid="word-card-furigana"]')?.value || "",
+        chinese: root.querySelector('[data-testid="word-card-chinese"]')?.value || ""
+      },
+      preGenerateSceneImage: root.querySelector('[data-testid="pregenerate-scene-image"]')?.checked || false,
+      sceneImagePrompt: root.querySelector('[data-testid="scene-image-prompt"]')?.value || "",
       promptReady: !root.querySelector('[data-testid="rebuild-prompt"]')?.hasAttribute("disabled")
     };
   });
@@ -406,6 +445,7 @@ async function configureProduction(page, options) {
   }
 
   if (options.assets) await configureVideoAssets(page, String(options.assets));
+  await configureReferenceBrief(page, options);
 
   await rebuildProductionPrompt(page);
   const settings = await readProductionSettings(page);
@@ -423,12 +463,13 @@ async function configureProduction(page, options) {
   return settings;
 }
 
-async function productionAction(page, operation, confirmPaid, sceneAssets = "", videoAssets = "") {
+async function productionAction(page, operation, confirmPaid, sceneAssets = "", videoAssets = "", referenceOptions = {}) {
   if (!["inspect", "references", "prepare", "generate"].includes(operation)) throw new Error(`Unsupported production operation: ${operation}`);
   await ensureView(page, "produce");
   await page.getByTestId("produce-workspace").waitFor({ state: "visible", timeout: 60_000 });
   await configureVideoAssets(page, videoAssets);
   await configureSceneSources(page, sceneAssets);
+  await configureReferenceBrief(page, referenceOptions);
   if (operation === "inspect") {
     return { status: "inspected" };
   }
@@ -498,8 +539,8 @@ function usage() {
     `  apply-last\n` +
     `  save\n` +
     `  cancel-active\n` +
-    `  configure-production [--mode short|agent] [--model NAME] [--duration N] [--ratio 4:3|9:16|16:9] [--assets id,id,...]\n` +
-    `  production [--message TEXT | --message-file PATH] --operation inspect|references|prepare|generate [--video-assets id,id] [--scene-assets id,id] [--confirm-paid]\n` +
+    `  configure-production [--mode short|agent] [--model NAME] [--duration N] [--ratio 4:3|9:16|16:9] [--assets id,id,...] [--scene-brief TEXT | --scene-brief-file PATH] [--word-en TEXT --word-ja TEXT --word-furigana TEXT --word-zh TEXT]\n` +
+    `  production [--message TEXT | --message-file PATH] --operation inspect|references|prepare|generate [--video-assets id,id] [--scene-assets id,id] [--scene-brief TEXT | --scene-brief-file PATH] [--word-en TEXT --word-ja TEXT --word-furigana TEXT --word-zh TEXT] [--confirm-paid]\n` +
     `  delivery [--message TEXT | --message-file PATH] --operation inspect|publish [--confirm-publish]\n` +
     `  run --story-match TEXT --story-message TEXT [--action final] --production-message TEXT --operation inspect|references|prepare|generate [--confirm-paid]\n\n` +
     `All commands manipulate visible DOM controls through the dedicated Chrome CDP session.\n`);
@@ -552,7 +593,7 @@ try {
     result = await configureProduction(page, options);
   } else if (command === "production") {
     if (options.message || options["message-file"]) await sendChat(page, messageOption(options), "chat");
-    result = await productionAction(page, String(options.operation || "inspect"), Boolean(options["confirm-paid"]), String(options["scene-assets"] || ""), String(options["video-assets"] || ""));
+    result = await productionAction(page, String(options.operation || "inspect"), Boolean(options["confirm-paid"]), String(options["scene-assets"] || ""), String(options["video-assets"] || ""), options);
   } else if (command === "delivery") {
     if (options.message || options["message-file"]) await sendChat(page, messageOption(options), "chat");
     result = await deliveryAction(page, String(options.operation || "inspect"), Boolean(options["confirm-publish"]));
